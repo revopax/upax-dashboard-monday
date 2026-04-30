@@ -149,12 +149,16 @@ export default function App() {
   const wdRef = useRef(null);
   const analysisRef = useRef(null);
   const blockTimesRef = useRef(null);
+  const minutaGeneratedRef = useRef(false);
 
   useEffect(() => {
-    if (finished && !minutaDraft) {
+    if (finished && !minutaGeneratedRef.current) {
+      minutaGeneratedRef.current = true;
       const draft = generateMinuta(wdRef.current, analysisRef.current, appGddData, blockTimesRef.current);
       setMinutaDraft(draft);
-      storeSet(STORE_KEY, { ...wdRef.current, minutaText: draft });
+      if (!wdRef.current?.minutaText) {
+        storeSet(STORE_KEY, { ...wdRef.current, minutaText: draft });
+      }
     }
   }, [finished, appGddData]);
 
