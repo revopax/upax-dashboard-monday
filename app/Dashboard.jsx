@@ -80,7 +80,7 @@ export default function App() {
     if (!wd || !wd.date) return;
     clearTimeout(autoSaveRef.current);
     autoSaveRef.current = setTimeout(() => {
-      storeSet(STORE_KEY, wd).catch(() => {});
+      storeSet(STORE_KEY, { ...wd, gdd_snapshot: appGddData }).catch(() => {});
     }, 3000);
     return () => clearTimeout(autoSaveRef.current);
   }, [wd]);
@@ -161,7 +161,7 @@ export default function App() {
       const draft = generateMinuta(wdRef.current, analysisRef.current, appGddData, blockTimesRef.current);
       setMinutaDraft(draft);
       if (!wdRef.current?.minutaText) {
-        storeSet(STORE_KEY, { ...wdRef.current, minutaText: draft });
+        storeSet(STORE_KEY, { ...wdRef.current, minutaText: draft, gdd_snapshot: appGddData });
       }
     }
   }, [finished, appGddData]);
@@ -469,9 +469,9 @@ export default function App() {
                 <div style={{ fontSize: 12, color: "var(--tx3)", fontFamily: "var(--mono)", marginTop: 2 }}>{Math.floor(elapsed / 60)}:{String(elapsed % 60).padStart(2, "0")} min · {minutaSaved ? "Guardada" : "Sin guardar"}</div>
               </div>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                {!minutaSaved && <button onClick={async () => { await storeSet(STORE_KEY, { ...wd, minutaText: minutaDraft }); setMinutaSaved(true); }} style={{ background: "var(--bg2)", color: "var(--tx2)", border: "1px solid var(--bg4)", padding: "8px 18px", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "var(--mono)", textTransform: "uppercase" }}>GUARDAR</button>}
-                <button onClick={async () => { await storeSet(STORE_KEY, { ...wd, minutaText: minutaDraft }); setMinutaSaved(true); handleCopy(minutaDraft); }} style={{ background: "var(--tx)", color: "var(--bg)", border: "none", padding: "8px 24px", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "var(--mono)", textTransform: "uppercase" }}>{minutaSaved ? "COPIAR A SLACK" : "GUARDAR + COPIAR"}</button>
-                <button onClick={async () => { await storeSet(STORE_KEY, { ...wd, minutaText: minutaDraft }); setMinutaSaved(true); setSlackStatus("sending"); const ok = await sendToSlack(minutaDraft); setSlackStatus(ok ? "ok" : "error"); if (!ok) handleCopy(minutaDraft); setTimeout(() => setSlackStatus(null), 4000); }} style={{ background: "linear-gradient(135deg,#4A154B,#611f69)", color: "#fff", border: "none", padding: "8px 20px", borderRadius: "var(--r-sm)", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "var(--mono)", textTransform: "uppercase" }}>ENVIAR A SLACK</button>
+                {!minutaSaved && <button onClick={async () => { await storeSet(STORE_KEY, { ...wd, minutaText: minutaDraft, gdd_snapshot: appGddData }); setMinutaSaved(true); }} style={{ background: "var(--bg2)", color: "var(--tx2)", border: "1px solid var(--bg4)", padding: "8px 18px", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "var(--mono)", textTransform: "uppercase" }}>GUARDAR</button>}
+                <button onClick={async () => { await storeSet(STORE_KEY, { ...wd, minutaText: minutaDraft, gdd_snapshot: appGddData }); setMinutaSaved(true); handleCopy(minutaDraft); }} style={{ background: "var(--tx)", color: "var(--bg)", border: "none", padding: "8px 24px", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "var(--mono)", textTransform: "uppercase" }}>{minutaSaved ? "COPIAR A SLACK" : "GUARDAR + COPIAR"}</button>
+                <button onClick={async () => { await storeSet(STORE_KEY, { ...wd, minutaText: minutaDraft, gdd_snapshot: appGddData }); setMinutaSaved(true); setSlackStatus("sending"); const ok = await sendToSlack(minutaDraft); setSlackStatus(ok ? "ok" : "error"); if (!ok) handleCopy(minutaDraft); setTimeout(() => setSlackStatus(null), 4000); }} style={{ background: "linear-gradient(135deg,#4A154B,#611f69)", color: "#fff", border: "none", padding: "8px 20px", borderRadius: "var(--r-sm)", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "var(--mono)", textTransform: "uppercase" }}>ENVIAR A SLACK</button>
               </div>
             </div>
             <textarea value={minutaDraft} onChange={(e) => { setMinutaDraft(e.target.value); setMinutaSaved(false); }} style={{ width: "100%", minHeight: 280, background: "var(--bg2)", color: "var(--tx)", border: "1px solid var(--bg4)", padding: 16, fontSize: 12, fontFamily: "var(--mono)", resize: "vertical", outline: "none", lineHeight: 1.7 }} />
@@ -513,7 +513,7 @@ export default function App() {
         {tab === "panorama"    && <ErrorBoundary name="Panorama"><TabPanorama analysis={an} items={items} /></ErrorBoundary>}
         {tab === "focos"       && <ErrorBoundary name="Focos"><TabFocos items={items} wd={wd} setWd={setWd} save={saveFn} activeSquad={activeSquad} setActiveSquad={setActiveSquad} /></ErrorBoundary>}
         {tab === "compromisos" && <ErrorBoundary name="Compromisos"><TabCompromisos wd={wd} setWd={setWd} save={saveFn} analysis={an} onCopy={handleCopy} gddData={appGddData} /></ErrorBoundary>}
-        {tab === "minutas"     && <ErrorBoundary name="Minutas"><TabMinutasInline wd={wd} analysis={an} gddData={appGddData} blockTimes={blockTimes} onOpenMinuta={(key, data) => setMinutaLightbox({ key, data })} /></ErrorBoundary>}
+        {tab === "minutas"     && <ErrorBoundary name="Minutas"><TabMinutasInline wd={wd} analysis={an} gddData={appGddData} blockTimes={blockTimes} onOpenMinuta={(key, data, editMode) => setMinutaLightbox({ key, data, editMode })} /></ErrorBoundary>}
 
         {/* Footer */}
         <div style={{ marginTop: 32, padding: "12px 0", borderTop: "1px solid var(--bg4)" }}>

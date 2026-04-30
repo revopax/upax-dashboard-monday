@@ -213,6 +213,18 @@ const TabHome = React.memo(function TabHome({ analysis: an, items, elapsed, onSt
 
       {/* GdD boxes — KPIs de generación de demanda */}
       {(() => {
+        if (gddLoading && !gddData) {
+          return (
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "var(--tx3)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8 }}>📊 Generación de Demanda</div>
+              <div className="kpi-grid-mobile" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 8 }}>
+                {[1,2,3,4].map(i => (
+                  <div key={i} style={{ background: "var(--bg2)", border: "1px solid var(--bg4)", borderRadius: "var(--r)", padding: "12px 14px", height: 100, animation: "pulse 1.5s ease-in-out infinite", opacity: 0.5 }} />
+                ))}
+              </div>
+            </div>
+          );
+        }
         const raw = gddData || { semana: {}, anterior: {}, ytd: {} };
         // When viewing prev week, swap semana/anterior so the KPIs show last week
         const showingPrev = gddWeekView === "prev";
@@ -231,6 +243,7 @@ const TabHome = React.memo(function TabHome({ analysis: an, items, elapsed, onSt
           if (src === "hubspot_live") return <span style={{ background: "rgba(52,199,89,.12)", border: "1px solid #34C759", color: "#34C759", borderRadius: 20, padding: "3px 10px", fontSize: 12, fontWeight: 700, letterSpacing: "0.02em", marginLeft: 6 }}>● LIVE</span>;
           if (src === "hubspot_partial") return <span style={{ background: "rgba(255,159,10,.12)", border: "1px solid var(--yellow)", color: "var(--yellow)", borderRadius: 20, padding: "3px 10px", fontSize: 12, fontWeight: 700, letterSpacing: "0.02em", marginLeft: 6 }}>PARCIAL</span>;
 
+          if (gddLoading && !src) return null;
           if (src === "empty" || !src) return <span style={{ fontSize: 9, color: "var(--red)", marginLeft: 6 }}>sin datos</span>;
           return null;
         })();

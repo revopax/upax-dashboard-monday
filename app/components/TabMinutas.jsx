@@ -22,10 +22,10 @@ const TabMinutasInline = React.memo(function TabMinutasInline({ wd, analysis, gd
     })();
   }, []);
 
-  async function openMinuta(k) {
+  async function openMinuta(k, editMode = false) {
     const d = await storeGet(k);
     document.body.style.overflow = "hidden";
-    onOpenMinuta(k, d);
+    onOpenMinuta(k, d, editMode);
   }
 
   async function copyMinuta(k, e) {
@@ -48,7 +48,11 @@ const TabMinutasInline = React.memo(function TabMinutasInline({ wd, analysis, gd
     setConfirmDel(null);
   }
 
-  const dateFmt = (k) => new Date(k.replace("weekly:", "")).toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  const dateFmt = (k) => {
+    const d = new Date(k.replace("weekly:", ""));
+    if (isNaN(d.getTime())) return "Fecha no disponible";
+    return d.toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  };
   return (
     <div className="fade">
       <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16 }}>Minutas</h2>
@@ -83,7 +87,7 @@ const TabMinutasInline = React.memo(function TabMinutasInline({ wd, analysis, gd
               <button onClick={(e) => copyMinuta(k, e)} style={{ background: copied === k ? "var(--green)" : "var(--bg3)", color: copied === k ? "#fff" : "var(--tx2)", border: "1px solid var(--bg4)", borderRadius: "var(--r-sm)", padding: "4px 10px", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
                 {copied === k ? "✓" : "📋"}
               </button>
-              <button onClick={() => openMinuta(k)} style={{ background: "var(--bg3)", color: "var(--tx2)", border: "1px solid var(--bg4)", borderRadius: "var(--r-sm)", padding: "4px 10px", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
+              <button onClick={(e) => { e.stopPropagation(); openMinuta(k, true); }} style={{ background: "var(--bg3)", color: "var(--tx2)", border: "1px solid var(--bg4)", borderRadius: "var(--r-sm)", padding: "4px 10px", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
                 ✏️
               </button>
               <button onClick={(e) => deleteMinuta(k, e)} style={{ background: "var(--bg3)", color: "var(--red)", border: "1px solid var(--bg4)", borderRadius: "var(--r-sm)", padding: "4px 10px", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>

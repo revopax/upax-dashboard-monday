@@ -29,13 +29,14 @@ select{-webkit-appearance:auto}
 /* Fallback selectores para texto inline — más específicos que el hack anterior */
 .presenter-mode [style]{transform-origin:top left}
 .presenter-mode .card-title{font-size:calc(14px * var(--ps)) !important}
-.sticky-nav{position:sticky;top:0;z-index:90;background:var(--bg);border-bottom:1px solid var(--bg4);padding:0 20px;margin:0 -20px;box-shadow:0 1px 0 var(--bg4),0 4px 12px rgba(0,0,0,.04);}
+.sticky-nav{position:sticky;top:0;z-index:90;background:var(--bg);border-bottom:1px solid var(--bg4);padding:0 20px;margin:0 -20px;box-shadow:0 1px 0 var(--bg4),0 4px 12px rgba(0,0,0,.04);scrollbar-width:none;}
+.sticky-nav::-webkit-scrollbar{display:none;}
 
 @media print{body>div>*:not(#print-root){display:none!important}#print-root{display:block!important;position:static!important;background:#fff!important}#print-bar{display:none!important}}
 @keyframes spin{to{transform:rotate(360deg)}}
 @media(max-width:640px){
   .sticky-nav button{padding:8px 10px;font-size:11px}
-  .sticky-nav{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .sticky-nav{overflow-x:auto;-webkit-overflow-scrolling:touch;padding:0 8px;margin:0 -8px;-webkit-mask-image:linear-gradient(to right,#000 85%,transparent);mask-image:linear-gradient(to right,#000 85%,transparent)}
   .mobile-stack{flex-direction:column!important}
   .mobile-hide{display:none!important}
   .mobile-full{width:100%!important;min-width:0!important}

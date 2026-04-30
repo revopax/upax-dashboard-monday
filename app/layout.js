@@ -16,8 +16,8 @@ const jetbrainsMono = JetBrains_Mono({
 })
 
 export const metadata = {
-  title: 'UPAX Marketing Dashboard',
-  description: 'Weekly marketing meeting system — Mkt Corp Upax',
+  title: 'Weekly Mkt Corp | UPAX',
+  description: 'Sistema de reunion semanal de marketing - Mkt Corp UPAX',
   robots: { index: false, follow: false }, // P4.8: no indexar
   icons: { icon: '/favicon.svg' },
 }

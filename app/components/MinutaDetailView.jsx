@@ -529,15 +529,15 @@ function SlackButton({ text }) {
   );
 }
 
-function MinutaDetailView({ weekKey, data, todayWd, todayAnalysis, gddData, blockTimes, onBack, onClose }) {
+function MinutaDetailView({ weekKey, data, todayWd, todayAnalysis, gddData, blockTimes, initialEditMode = false, onBack, onClose }) {
   const isToday = weekKey === STORE_KEY;
   const visualWd = isToday ? todayWd : (data || {});
   const visualAn = todayAnalysis;
-  const visualGdd = gddData;
+  const visualGdd = isToday ? gddData : (data?.gdd_snapshot || gddData);
   const rawText = isToday
     ? generateMinuta(todayWd, todayAnalysis, gddData, blockTimes)
-    : (data?.minutaText || generateMinuta(data, null, gddData, blockTimes));
-  const [editMode, setEditMode] = useState(false);
+    : (data?.minutaText || generateMinuta(data, null, data?.gdd_snapshot || gddData, blockTimes));
+  const [editMode, setEditMode] = useState(initialEditMode);
   const [editText, setEditText] = useState(rawText);
   const [copied, setCopied] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -555,7 +555,7 @@ function MinutaDetailView({ weekKey, data, todayWd, todayAnalysis, gddData, bloc
 
   return (
     <>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 20px", borderBottom: "1px solid var(--bg4)", flexShrink: 0 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 20px", borderBottom: "1px solid var(--bg4)", flexShrink: 0, flexWrap: "wrap", gap: 6, overflowX: "hidden" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <button onClick={onBack} style={{ background: "var(--bg3)", border: "none", borderRadius: "var(--r-sm)", padding: "5px 10px", fontSize: 12, cursor: "pointer", color: "var(--tx3)" }}>← Volver</button>
           <div>
@@ -563,11 +563,11 @@ function MinutaDetailView({ weekKey, data, todayWd, todayAnalysis, gddData, bloc
             <div style={{ fontSize: 11, color: "var(--tx3)" }}>{dateFmt}</div>
           </div>
         </div>
-        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+        <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
           {editMode
-            ? <button onClick={handleSave} style={{ background: "var(--green)", color: "#fff", border: "none", borderRadius: "var(--r-sm)", padding: "6px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>{saved ? "✓ Guardado" : "💾 Guardar"}</button>
-            : <button onClick={() => { setEditMode(true); setEditText(rawText); }} style={{ background: "var(--bg3)", color: "var(--tx2)", border: "1px solid var(--bg4)", borderRadius: "var(--r-sm)", padding: "6px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>✏️ Editar</button>}
-          <button onClick={handleCopy} style={{ background: copied ? "var(--green)" : "var(--blue)", color: "#fff", border: "none", borderRadius: "var(--r-sm)", padding: "6px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>{copied ? "✓ Copiado" : "📋 Copiar"}</button>
+            ? <button onClick={handleSave} style={{ background: "var(--green)", color: "#fff", border: "none", borderRadius: "var(--r-sm)", padding: "6px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>{saved ? "✓" : "💾"}<span className="mobile-hide">{saved ? " Guardado" : " Guardar"}</span></button>
+            : <button onClick={() => { setEditMode(true); setEditText(rawText); }} style={{ background: "var(--bg3)", color: "var(--tx2)", border: "1px solid var(--bg4)", borderRadius: "var(--r-sm)", padding: "6px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>✏️<span className="mobile-hide"> Editar</span></button>}
+          <button onClick={handleCopy} style={{ background: copied ? "var(--green)" : "var(--blue)", color: "#fff", border: "none", borderRadius: "var(--r-sm)", padding: "6px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>{copied ? "✓" : "📋"}<span className="mobile-hide">{copied ? " Copiado" : " Copiar"}</span></button>
           <SlackButton text={displayText} />
           <PdfButton text={displayText} dateStr={dateStr} wd={visualWd} analysis={visualAn} gddData={visualGdd} />
           <button onClick={onClose} style={{ background: "var(--bg3)", border: "none", width: 32, height: 32, borderRadius: 16, fontSize: 16, cursor: "pointer", color: "var(--tx3)", display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
