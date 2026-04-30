@@ -19,6 +19,7 @@ export const metadata = {
   title: 'UPAX Marketing Dashboard',
   description: 'Weekly marketing meeting system — Mkt Corp Upax',
   robots: { index: false, follow: false }, // P4.8: no indexar
+  icons: { icon: '/favicon.svg' },
 }
 
 // P4.8: viewport separado de metadata (Next.js 14 lo requiere así)
