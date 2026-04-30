@@ -1,7 +1,7 @@
 'use client'
 import React, { useState } from 'react'
 import { SQUADS, STORE_KEY, PERSONAS, TODAY } from '../lib/constants'
-import { WEEK, shortName, parseTL, daysDiff, normalizeSquad, copyToClipboard } from '../lib/utils'
+import { WEEK, shortName, parseTL, daysDiff, normalizeSquad, copyToClipboard, normalizeFocos } from '../lib/utils'
 import { storeSet } from '../lib/storage'
 import { authHeaders } from '../lib/api'
 import { generateMinuta } from '../lib/minuta'
@@ -257,7 +257,7 @@ function renderMinutaVisual(text, wd2, an, gdd2) {
     const focos = wd2?.focos || {};
     const squadsWithData = SQUADS.filter(sq => {
       const raw = focos[sq.id];
-      const arr = Array.isArray(raw) ? raw : (raw?.focos||raw?.blocker||raw?.necesito ? [raw] : []);
+      const arr = normalizeFocos(raw);
       return arr.some(f => f.focos?.trim()||f.blocker?.trim()||f.necesito?.trim());
     });
     if (!squadsWithData.length) return null;
@@ -266,7 +266,7 @@ function renderMinutaVisual(text, wd2, an, gdd2) {
         <div style={{ padding: "8px 0" }}>
           {squadsWithData.map((sq, si) => {
             const raw = focos[sq.id];
-            const arr = Array.isArray(raw) ? raw : (raw?.focos||raw?.blocker||raw?.necesito ? [raw] : []);
+            const arr = normalizeFocos(raw);
             const presenter = wd2?.presenters?.[sq.id] || sq.lead;
             return (
               <div key={sq.id} style={{ borderBottom: si < squadsWithData.length-1 ? "2px solid var(--bg3)" : "none", paddingBottom: 12, marginBottom: si < squadsWithData.length-1 ? 4 : 0 }}>
@@ -396,7 +396,7 @@ function PdfButton({ text, dateStr, wd, analysis, gddData }) {
     if (wd) {
       SQUADS.forEach(sq => {
         const raw = wd.focos?.[sq.id];
-        const arr = Array.isArray(raw) ? raw : (raw?.focos||raw?.blocker||raw?.necesito ? [raw] : []);
+        const arr = normalizeFocos(raw);
         const filled = arr.filter(f2 => f2.focos?.trim()||f2.blocker?.trim()||f2.necesito?.trim());
         if (!filled.length) return;
         const presenter = wd.presenters?.[sq.id] || sq.lead;

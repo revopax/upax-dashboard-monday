@@ -173,3 +173,10 @@ export async function copyToClipboard(text) {
   document.body.removeChild(ta);
   return ok;
 }
+
+// Normalize focos data: handles both legacy v7.x (single object) and v9.x (array) schema
+export function normalizeFocos(focosEntry) {
+  if (Array.isArray(focosEntry)) return focosEntry;
+  if (focosEntry?.focos || focosEntry?.blocker || focosEntry?.necesito) return [focosEntry];
+  return [];
+}

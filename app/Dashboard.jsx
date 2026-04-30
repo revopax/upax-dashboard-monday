@@ -70,7 +70,6 @@ export default function App() {
   const { gddData: hookGddData, mqlBreakdown, mqlBreakdownPrev, targets: gddTargets, history: gddHistory, setHistory: setGddHistory, loading: gddLoading, refetch: refetchGdd } = useGDDData();
   // appGddData: alias directo de hookGddData (eliminado estado espejo innecesario)
   const appGddData = hookGddData;
-  const setAppGddData = () => {}; // no-op — mantener compatibilidad con props existentes
 
   const saveFn = useCallback(async (d) => { await storeSet(STORE_KEY, d); }, []);
 
@@ -508,7 +507,7 @@ export default function App() {
         </div>
         <div style={{ height: 20 }} />
 
-        {tab === "home"        && <ErrorBoundary name="Home"><TabHome analysis={an} items={items} elapsed={elapsed} onStart={startTimer} onViewAlerts={() => { setTab("panorama"); try { sessionStorage.setItem("panorama-tab","alertas"); } catch {} }} gddData={appGddData} setGddData={setAppGddData} mqlBreakdown={mqlBreakdown} mqlBreakdownPrev={mqlBreakdownPrev} gddTargets={gddTargets} gddHistory={gddHistory} setGddHistory={setGddHistory} gddLoading={gddLoading} /></ErrorBoundary>}
+        {tab === "home"        && <ErrorBoundary name="Home"><TabHome analysis={an} items={items} elapsed={elapsed} onStart={startTimer} onViewAlerts={() => { setTab("panorama"); try { sessionStorage.setItem("panorama-tab","alertas"); } catch {} }} gddData={appGddData} mqlBreakdown={mqlBreakdown} mqlBreakdownPrev={mqlBreakdownPrev} gddTargets={gddTargets} gddHistory={gddHistory} setGddHistory={setGddHistory} gddLoading={gddLoading} /></ErrorBoundary>}
         {tab === "agenda"      && <ErrorBoundary name="Agenda"><TabAgenda wd={wd} setWd={setWd} save={saveFn} currentIdx={currentBlockIdx} blockTimes={blockTimes} onJumpToBlock={jumpToBlock} /></ErrorBoundary>}
         {tab === "panorama"    && <ErrorBoundary name="Panorama"><TabPanorama analysis={an} items={items} /></ErrorBoundary>}
         {tab === "focos"       && <ErrorBoundary name="Focos"><TabFocos items={items} wd={wd} setWd={setWd} save={saveFn} activeSquad={activeSquad} setActiveSquad={setActiveSquad} /></ErrorBoundary>}

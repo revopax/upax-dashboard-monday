@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 // components/TabFocos.jsx
 import { SQUADS, PHASES, TODAY } from '../lib/constants'
-import { parseTL, daysDiff, shortName, normalizeSquad, isActive, isOverdue, overlapsThisWeek } from '../lib/utils'
+import { parseTL, daysDiff, shortName, normalizeSquad, isActive, isOverdue, overlapsThisWeek, normalizeFocos } from '../lib/utils'
 import { Chip, Card, SquadInputSection } from './ui'
 
 const TabFocos = React.memo(function TabFocos({ items, wd, setWd, save, activeSquad, setActiveSquad }) {
@@ -12,7 +12,7 @@ const TabFocos = React.memo(function TabFocos({ items, wd, setWd, save, activeSq
 
   const allBlockers = [], allNecesitos = [];
   SQUADS.forEach((s) => {
-    const arr = Array.isArray(focos[s.id]) ? focos[s.id] : (focos[s.id]?.focos || focos[s.id]?.blocker ? [focos[s.id]] : []);
+    const arr = normalizeFocos(focos[s.id]);
     arr.forEach((f) => {
       if (f.blocker?.trim()) allBlockers.push({ text: f.blocker, quien: f.blocker_quien, cuando: f.blocker_cuando, sq: s });
       if (f.necesito?.trim()) allNecesitos.push({ text: f.necesito, quien: f.necesito_quien, cuando: f.necesito_cuando, sq: s });
@@ -21,7 +21,7 @@ const TabFocos = React.memo(function TabFocos({ items, wd, setWd, save, activeSq
   const crossCount = allBlockers.length + allNecesitos.length;
 
   const sqItems = sq ? items.filter((i) => normalizeSquad(i.column_values?.color_mkz0s203) === sq.name && isActive(i.column_values?.color_mkz09na)) : [];
-  const entries = Array.isArray(focos[activeSquad]) ? focos[activeSquad] : (focos[activeSquad]?.focos || focos[activeSquad]?.blocker || focos[activeSquad]?.necesito ? [focos[activeSquad]] : []);
+  const entries = normalizeFocos(focos[activeSquad]);
   const [showForm, setShowForm] = useState(!entries.length); // mostrar form si no hay entries
 
   const [draft, setDraft] = useState({});
@@ -55,7 +55,7 @@ const TabFocos = React.memo(function TabFocos({ items, wd, setWd, save, activeSq
     <div className="fade">
       <div style={{ display: "flex", gap: 4, marginBottom: 14, flexWrap: "wrap" }}>
         {SQUADS.map((s) => {
-          const arr = Array.isArray(focos[s.id]) ? focos[s.id] : (focos[s.id]?.focos || focos[s.id]?.blocker ? [focos[s.id]] : []);
+          const arr = normalizeFocos(focos[s.id]);
           const hasFoco = arr.some((f) => f.focos?.trim()), hasBlocker = arr.some((f) => f.blocker?.trim());
           return (
             <div key={s.id} style={{ position: "relative" }}>
@@ -75,10 +75,10 @@ const TabFocos = React.memo(function TabFocos({ items, wd, setWd, save, activeSq
         <Card style={{ borderTop: "3px solid var(--purple)" }}>
           <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 10 }}>Cross-Squad — Resumen</div>
           {(() => {
-            const hasAny = SQUADS.some((s) => { const arr = Array.isArray(focos[s.id]) ? focos[s.id] : (focos[s.id]?.focos || focos[s.id]?.blocker ? [focos[s.id]] : []); return arr.some((f) => f.focos?.trim() || f.blocker?.trim() || f.necesito?.trim()); });
+            const hasAny = SQUADS.some((s) => { const arr = normalizeFocos(focos[s.id]); return arr.some((f) => f.focos?.trim() || f.blocker?.trim() || f.necesito?.trim()); });
             if (!hasAny) return <div style={{ textAlign: "center", padding: "16px 0", color: "var(--tx3)", fontSize: 12 }}>Aún no hay registros. Se llenan desde cada squad.</div>;
             return SQUADS.map((s) => {
-              const arr = Array.isArray(focos[s.id]) ? focos[s.id] : (focos[s.id]?.focos || focos[s.id]?.blocker ? [focos[s.id]] : []);
+              const arr = normalizeFocos(focos[s.id]);
               const filled = arr.filter((f) => f.focos?.trim() || f.blocker?.trim() || f.necesito?.trim());
               if (!filled.length) return null;
               return (

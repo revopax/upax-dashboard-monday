@@ -110,7 +110,7 @@ const fmtDate = (s) => {
   return isNaN(d) ? s : d.toLocaleDateString("es-MX", { day: "numeric", month: "short" });
 };
 
-const TabHome = React.memo(function TabHome({ analysis: an, items, elapsed, onStart, onViewAlerts, gddData: propGddData, setGddData: propSetGddData, mqlBreakdown, mqlBreakdownPrev, gddTargets, gddHistory, setGddHistory, gddLoading }) {
+const TabHome = React.memo(function TabHome({ analysis: an, items, elapsed, onStart, onViewAlerts, gddData: propGddData, mqlBreakdown, mqlBreakdownPrev, gddTargets, gddHistory, setGddHistory, gddLoading }) {
   const [alertGroupsExpanded, setAlertGroupsExpanded] = useState({});
   const [expandedPerson, setExpandedPerson] = useState(null);
   const [cargaSquad, setCargaSquad] = useState("all");
