@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import dynamic from "next/dynamic";
 import {
   TODAY_STR, STORE_KEY, CACHE_KEY,
   SQUADS, AGENDA, PERSONAS,
@@ -19,16 +20,19 @@ import { CSS } from "./lib/css";
 import { useGDDData } from "./hooks/useGDDData";
 import { Card, CopyModal } from "./components/ui";
 import { TimerZone } from "./components/TimerZone";
-import { TabHome } from "./components/TabHome";
-import { TabAgenda } from "./components/TabAgenda";
-import { TabPanorama } from "./components/TabPanorama";
-import { TabFocos } from "./components/TabFocos";
-import { TabCompromisos } from "./components/TabCompromisos";
-import { TabMinutasInline } from "./components/TabMinutas";
-import { AuditLogPanel } from "./components/AuditLogPanel";
-import { PhaseModal } from "./components/PhaseModal";
-import { MinutaLightbox } from "./components/MinutaLightbox";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+
+// Code-split: each tab loads on demand
+const TabSkeleton = () => <div style={{ textAlign: "center", padding: 40, color: "var(--tx3)", fontSize: 12 }}>Cargando...</div>;
+const TabHome = dynamic(() => import("./components/TabHome").then(m => ({ default: m.TabHome })), { loading: TabSkeleton, ssr: false });
+const TabAgenda = dynamic(() => import("./components/TabAgenda").then(m => ({ default: m.TabAgenda })), { loading: TabSkeleton, ssr: false });
+const TabPanorama = dynamic(() => import("./components/TabPanorama").then(m => ({ default: m.TabPanorama })), { loading: TabSkeleton, ssr: false });
+const TabFocos = dynamic(() => import("./components/TabFocos").then(m => ({ default: m.TabFocos })), { loading: TabSkeleton, ssr: false });
+const TabCompromisos = dynamic(() => import("./components/TabCompromisos").then(m => ({ default: m.TabCompromisos })), { loading: TabSkeleton, ssr: false });
+const TabMinutasInline = dynamic(() => import("./components/TabMinutas").then(m => ({ default: m.TabMinutasInline })), { loading: TabSkeleton, ssr: false });
+const AuditLogPanel = dynamic(() => import("./components/AuditLogPanel").then(m => ({ default: m.AuditLogPanel })), { ssr: false });
+const PhaseModal = dynamic(() => import("./components/PhaseModal").then(m => ({ default: m.PhaseModal })), { ssr: false });
+const MinutaLightbox = dynamic(() => import("./components/MinutaLightbox").then(m => ({ default: m.MinutaLightbox })), { ssr: false });
 
 /* ═══════════════════════════════════════════════════════════════
    MAIN APP — Orquestador principal
