@@ -1,6 +1,12 @@
 import { NextResponse } from 'next/server'
 import { validateAuth } from '../_auth'
 
+// Key validation — only allow known patterns
+const VALID_KEY_RE = /^(weekly:\d{4}-\d{2}-\d{2}(:.+)?|monday-cache-v\d+|audit_log|gdd_history)$/;
+function isValidKey(key) {
+  return typeof key === 'string' && VALID_KEY_RE.test(key);
+}
+
 // Upstash REST API — usa las variables que Vercel inyecta automáticamente
 // al conectar Upstash desde el Marketplace:
 // KV_REST_API_URL + KV_REST_API_TOKEN
@@ -33,6 +39,7 @@ export async function GET(request) {
 
   try {
     if (action === 'get' && key) {
+      if (!isValidKey(key)) return NextResponse.json({ error: 'Invalid key format' }, { status: 400 })
       const result = await upstash('GET', key)
       if (result === null) {
         // Sin KV configurado — devolver null (el frontend tiene fallback a GDD_EMPTY)
@@ -47,6 +54,9 @@ export async function GET(request) {
     }
 
     if (action === 'list' && prefix !== null) {
+      if (typeof prefix !== 'string' || !/^(weekly:|monday-cache|audit_log|gdd_history)/.test(prefix)) {
+        return NextResponse.json({ error: 'Invalid prefix' }, { status: 400 })
+      }
       // Usar SCAN en lugar de KEYS — KEYS es O(n) bloqueante en Redis (P4.4)
       const allKeys = []
       let cursor = '0'
@@ -78,6 +88,7 @@ export async function POST(request) {
     const { action, key, value } = await request.json()
 
     if (action === 'set' && key) {
+      if (!isValidKey(key)) return NextResponse.json({ error: 'Invalid key format' }, { status: 400 })
       const serialized = typeof value === 'string' ? value : JSON.stringify(value)
       // Validar tamaño antes de enviar a Upstash (límite ~10MB, safety 5MB)
       if (serialized.length > 5_000_000) {
@@ -94,6 +105,7 @@ export async function POST(request) {
     }
 
     if (action === 'delete' && key) {
+      if (!isValidKey(key)) return NextResponse.json({ error: 'Invalid key format' }, { status: 400 })
       const result = await upstash('DEL', key)
       return NextResponse.json({ success: true })
     }
