@@ -10,12 +10,11 @@ export const COL_IDS = ["person","color_mkz0s203","color_mkz09na","timerange_mkz
 // Fecha en timezone México — consistente entre servidor (UTC) y cliente (CDMX)
 // Evita hydration mismatch React #418/#423/#425 entre 00:00 UTC y 06:00 CDMX
 function _getTodayMexStr() {
-  const now = new Date();
-  const mxStr = now.toLocaleString('en-CA', {
+  const fmt = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'America/Mexico_City',
     year: 'numeric', month: '2-digit', day: '2-digit',
   });
-  return mxStr.split(',')[0].trim();
+  return fmt.format(new Date()); // "2026-04-30" — no split/trim needed
 }
 export const TODAY_STR = _getTodayMexStr();
 export const TODAY = new Date(TODAY_STR + "T12:00:00");
