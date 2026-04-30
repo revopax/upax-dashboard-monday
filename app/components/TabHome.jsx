@@ -117,7 +117,6 @@ const TabHome = React.memo(function TabHome({ analysis: an, items, elapsed, onSt
   const [showAllCarga, setShowAllCarga] = useState(false);
   const [mqlWeekIdx, setMqlWeekIdx] = useState(-1); // -1 = semana actual
   const [expandedWeek, setExpandedWeek] = useState(null);
-  const [showAllWeeks, setShowAllWeeks] = useState(false);
   // On Mondays (weekly meeting day), default to showing last week's data
   const [gddWeekView, setGddWeekView] = useState("current");
   useEffect(() => { if (new Date().getDay() === 1) setGddWeekView("prev"); }, []);
@@ -439,12 +438,9 @@ const TabHome = React.memo(function TabHome({ analysis: an, items, elapsed, onSt
         );
       })()}
 
-      {/* Tendencia Semanal GDD — filas expandibles */}
+      {/* Tendencia Semanal GDD — agrupado por mes */}
       {(() => {
         if (gddLoading || !gddHistory || gddHistory.length === 0) return null;
-        const maxVisible = showAllWeeks ? gddHistory.length : 12;
-        const weeks = gddHistory.slice(0, maxVisible);
-        const hasMore = gddHistory.length > 12;
         const metrics = ["leads", "mqls", "sqls", "opps"];
         const labels = { leads: "Leads", mqls: "MQLs", sqls: "SQLs", opps: "Opps" };
         const arrow = (cur, prev) => {
@@ -453,6 +449,31 @@ const TabHome = React.memo(function TabHome({ analysis: an, items, elapsed, onSt
           if (cur < prev) return { symbol: "▼", color: "var(--red)" };
           return { symbol: "–", color: "var(--tx3)" };
         };
+
+        const byMonth = {};
+        gddHistory.forEach((w, i) => {
+          const key = (w.semana_desde || w.id || "").slice(0, 7);
+          if (!key || key.length < 7) return;
+          if (!byMonth[key]) byMonth[key] = [];
+          byMonth[key].push({ ...w, _globalIdx: i });
+        });
+        const monthKeys = Object.keys(byMonth).sort().reverse();
+
+        const monthLabelFn = (mKey) => {
+          const d = new Date(mKey + "-15T12:00:00");
+          const s = d.toLocaleDateString("es-MX", { month: "long", year: "numeric" });
+          return s.charAt(0).toUpperCase() + s.slice(1);
+        };
+
+        const calcTotals = (weeks) => weeks.reduce((acc, w) => ({
+          leads: acc.leads + (w.leads || 0),
+          mqls: acc.mqls + (w.mqls || 0),
+          sqls: acc.sqls + (w.sqls || 0),
+          opps: acc.opps + (w.opps || 0),
+        }), { leads: 0, mqls: 0, sqls: 0, opps: 0 });
+
+        const globalTotals = calcTotals(gddHistory);
+
         return (
           <Card style={{ marginBottom: 12 }}>
             <div style={{ fontSize: 12, fontWeight: 700, color: "var(--tx3)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>
@@ -469,77 +490,102 @@ const TabHome = React.memo(function TabHome({ analysis: an, items, elapsed, onSt
                   </tr>
                 </thead>
                 <tbody>
-                  {weeks.map((w, i) => {
-                    const isFirst = w.semana_desde === gddData?.fechas?.semana_desde;
-                    const prev = weeks[i + 1];
-                    const isExpanded = expandedWeek === (w.id || i);
-                    const hasPorOrigen = Array.isArray(w.por_origen) && w.por_origen.length > 0;
+                  {monthKeys.map((mKey, mi) => {
+                    const weeks = byMonth[mKey];
+                    const isMonthExpanded = mi === 0 || expandedWeek === "month-" + mKey;
+                    const mTotals = calcTotals(weeks);
+
                     return (
-                      <React.Fragment key={w.id || i}>
+                      <React.Fragment key={mKey}>
                         <tr
-                          onClick={() => hasPorOrigen && setExpandedWeek(isExpanded ? null : (w.id || i))}
-                          style={{
-                            background: isFirst ? "rgba(0,122,255,.06)" : "transparent",
-                            cursor: hasPorOrigen ? "pointer" : "default",
-                            transition: "background .15s",
-                          }}
-                          onMouseEnter={e => { if (hasPorOrigen && !isFirst) e.currentTarget.style.background = "var(--bg3)" }}
-                          onMouseLeave={e => { if (!isFirst) e.currentTarget.style.background = "transparent" }}
+                          onClick={() => setExpandedWeek(isMonthExpanded && mi !== 0 ? null : "month-" + mKey)}
+                          style={{ cursor: "pointer", background: "var(--bg2)" }}
+                          onMouseEnter={e => e.currentTarget.style.background = "var(--bg3)"}
+                          onMouseLeave={e => e.currentTarget.style.background = "var(--bg2)"}
                         >
-                          <td style={{ padding: "6px 8px", fontSize: 11, color: isFirst ? "var(--blue)" : "var(--tx2)", fontWeight: isFirst ? 700 : 400, borderBottom: isExpanded ? "none" : "1px solid var(--bg4)", whiteSpace: "nowrap" }}>
-                            {hasPorOrigen && <span style={{ fontSize: 8, marginRight: 4, color: "var(--tx3)", display: "inline-block", transform: isExpanded ? "rotate(90deg)" : "none", transition: "transform .2s" }}>▶</span>}
-                            {fmtDate(w.semana_desde)}
-                            {isFirst && <span style={{ fontSize: 9, marginLeft: 4, color: "var(--blue)", fontWeight: 700 }}>actual</span>}
+                          <td style={{ padding: "8px 8px", fontSize: 12, fontWeight: 700, color: "var(--tx)", borderBottom: "1px solid var(--bg4)" }}>
+                            <span style={{ fontSize: 9, marginRight: 6, color: "var(--tx3)", display: "inline-block", transform: isMonthExpanded ? "rotate(90deg)" : "none", transition: "transform .2s" }}>▶</span>
+                            {monthLabelFn(mKey)}
+                            <span style={{ fontSize: 10, fontWeight: 400, color: "var(--tx3)", marginLeft: 6 }}>{weeks.length} sem.</span>
                           </td>
-                          {metrics.map(m => {
-                            const val = w[m] || 0;
-                            const a = prev ? arrow(val, prev[m] || 0) : null;
-                            return (
-                              <td key={m} style={{ textAlign: "right", padding: "6px 8px", borderBottom: isExpanded ? "none" : "1px solid var(--bg4)", fontWeight: isFirst ? 700 : 400, color: isFirst ? "var(--tx)" : "var(--tx2)" }}>
-                                {val.toLocaleString()}
-                                {a && <span style={{ fontSize: 9, marginLeft: 3, color: a.color, fontWeight: 700 }}>{a.symbol}</span>}
-                              </td>
-                            );
-                          })}
-                        </tr>
-                        {/* Expanded breakdown for this week */}
-                        {isExpanded && hasPorOrigen && (
-                          <tr>
-                            <td colSpan={5} style={{ padding: "0 8px 8px 24px", borderBottom: "1px solid var(--bg4)" }}>
-                              <div style={{ display: "flex", gap: 12, marginBottom: 6, fontSize: 10, color: "var(--tx3)" }}>
-                                {w.breakdown_macro && (
-                                  <>
-                                    <span><span style={{ display: "inline-block", width: 6, height: 6, borderRadius: 2, background: "var(--green)", marginRight: 3, verticalAlign: "middle" }} />Inbound: {w.breakdown_macro.inbound || 0}</span>
-                                    <span><span style={{ display: "inline-block", width: 6, height: 6, borderRadius: 2, background: "var(--blue)", marginRight: 3, verticalAlign: "middle" }} />Outbound: {w.breakdown_macro.outbound || 0}</span>
-                                  </>
-                                )}
-                              </div>
-                              <MqlChannelList
-                                channels={w.por_origen}
-                                maxCount={w.por_origen[0]?.count || 1}
-                                showMax={5}
-                                needsMore={w.por_origen.length > 5}
-                                compact
-                              />
+                          {metrics.map(m => (
+                            <td key={m} style={{ textAlign: "right", padding: "8px 8px", fontSize: 11, fontWeight: 700, color: isMonthExpanded ? "var(--tx3)" : "var(--tx2)", borderBottom: "1px solid var(--bg4)" }}>
+                              {mTotals[m].toLocaleString()}
                             </td>
-                          </tr>
-                        )}
+                          ))}
+                        </tr>
+                        {isMonthExpanded && weeks.map((w, wi) => {
+                          const isFirst = w.semana_desde === gddData?.fechas?.semana_desde;
+                          const prev = weeks[wi + 1];
+                          const weekKey = w.id || w._globalIdx;
+                          const isWeekExpanded = expandedWeek === weekKey;
+                          const hasPorOrigen = Array.isArray(w.por_origen) && w.por_origen.length > 0;
+                          return (
+                            <React.Fragment key={weekKey}>
+                              <tr
+                                onClick={() => hasPorOrigen && setExpandedWeek(isWeekExpanded ? "month-" + mKey : weekKey)}
+                                style={{
+                                  background: isFirst ? "rgba(0,122,255,.06)" : "transparent",
+                                  cursor: hasPorOrigen ? "pointer" : "default",
+                                  transition: "background .15s",
+                                }}
+                                onMouseEnter={e => { if (hasPorOrigen && !isFirst) e.currentTarget.style.background = "var(--bg3)" }}
+                                onMouseLeave={e => { if (!isFirst) e.currentTarget.style.background = "transparent" }}
+                              >
+                                <td style={{ padding: "6px 8px 6px 24px", fontSize: 11, color: isFirst ? "var(--blue)" : "var(--tx2)", fontWeight: isFirst ? 700 : 400, borderBottom: isWeekExpanded ? "none" : "1px solid var(--bg4)", whiteSpace: "nowrap" }}>
+                                  {hasPorOrigen && <span style={{ fontSize: 8, marginRight: 4, color: "var(--tx3)", display: "inline-block", transform: isWeekExpanded ? "rotate(90deg)" : "none", transition: "transform .2s" }}>▶</span>}
+                                  {fmtDate(w.semana_desde)}
+                                  {isFirst && <span style={{ fontSize: 9, marginLeft: 4, color: "var(--blue)", fontWeight: 700 }}>actual</span>}
+                                </td>
+                                {metrics.map(m => {
+                                  const val = w[m] || 0;
+                                  const a = prev ? arrow(val, prev[m] || 0) : null;
+                                  return (
+                                    <td key={m} style={{ textAlign: "right", padding: "6px 8px", borderBottom: isWeekExpanded ? "none" : "1px solid var(--bg4)", fontWeight: isFirst ? 700 : 400, color: isFirst ? "var(--tx)" : "var(--tx2)" }}>
+                                      {val.toLocaleString()}
+                                      {a && <span style={{ fontSize: 9, marginLeft: 3, color: a.color, fontWeight: 700 }}>{a.symbol}</span>}
+                                    </td>
+                                  );
+                                })}
+                              </tr>
+                              {isWeekExpanded && hasPorOrigen && (
+                                <tr>
+                                  <td colSpan={5} style={{ padding: "0 8px 8px 24px", borderBottom: "1px solid var(--bg4)" }}>
+                                    <div style={{ display: "flex", gap: 12, marginBottom: 6, fontSize: 10, color: "var(--tx3)" }}>
+                                      {w.breakdown_macro && (
+                                        <>
+                                          <span><span style={{ display: "inline-block", width: 6, height: 6, borderRadius: 2, background: "var(--green)", marginRight: 3, verticalAlign: "middle" }} />Inbound: {w.breakdown_macro.inbound || 0}</span>
+                                          <span><span style={{ display: "inline-block", width: 6, height: 6, borderRadius: 2, background: "var(--blue)", marginRight: 3, verticalAlign: "middle" }} />Outbound: {w.breakdown_macro.outbound || 0}</span>
+                                        </>
+                                      )}
+                                    </div>
+                                    <MqlChannelList
+                                      channels={w.por_origen}
+                                      maxCount={w.por_origen[0]?.count || 1}
+                                      showMax={5}
+                                      needsMore={w.por_origen.length > 5}
+                                      compact
+                                    />
+                                  </td>
+                                </tr>
+                              )}
+                            </React.Fragment>
+                          );
+                        })}
                       </React.Fragment>
                     );
                   })}
+                  <tr style={{ background: "var(--bg2)", borderTop: "2px solid var(--bg4)" }}>
+                    <td style={{ padding: "10px 8px", fontSize: 12, fontWeight: 800, color: "var(--tx)" }}>Total</td>
+                    {metrics.map(m => (
+                      <td key={m} style={{ textAlign: "right", padding: "10px 8px", fontSize: 13, fontWeight: 800, color: "var(--tx)" }}>
+                        {globalTotals[m].toLocaleString()}
+                      </td>
+                    ))}
+                  </tr>
                 </tbody>
               </table>
             </div>
-            {hasMore && !showAllWeeks && (
-              <button onClick={() => setShowAllWeeks(true)} style={{ fontSize: 10, color: "var(--blue)", background: "none", border: "none", cursor: "pointer", fontWeight: 600, marginTop: 8, padding: 0 }}>
-                +{gddHistory.length - 12} semanas más ↓
-              </button>
-            )}
-            {showAllWeeks && hasMore && (
-              <button onClick={() => setShowAllWeeks(false)} style={{ fontSize: 10, color: "var(--blue)", background: "none", border: "none", cursor: "pointer", fontWeight: 600, marginTop: 8, padding: 0 }}>
-                Ver menos ↑
-              </button>
-            )}
           </Card>
         );
       })()}
