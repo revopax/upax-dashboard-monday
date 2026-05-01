@@ -30,7 +30,7 @@ const TimerZone = React.memo(function TimerZone({ elapsed, running, onStart, onP
           {btn("⏭", onNext, undefined, undefined, !nextB, nextB ? `${nextB.label} →` : "")}
           {btn("⏹", onFinish, "var(--red)", "#fff")}
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1, background: urgent ? "rgba(255,69,58,.1)" : "var(--bg)", border: `0.3px solid ${urgent ? "rgba(255,69,58,.3)" : "var(--border)"}`, padding: "7px 14px", minWidth: 180, animation: urgent ? "pulse 1s ease infinite" : "none" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1, background: urgent ? "rgba(255,69,58,.1)" : "var(--bg)", border: `0.3px solid ${urgent ? "rgba(255,69,58,.3)" : "var(--border)"}`, borderRadius: "var(--r-sm)", padding: "7px 14px", minWidth: 180, animation: urgent ? "pulse 1s ease infinite" : "none" }}>
           {running && <div style={{ width: 6, height: 6, borderRadius: "50%", background: urgent ? "var(--red)" : block.color, animation: "liveDot 1.2s ease infinite", flexShrink: 0 }} />}
           <span style={{ fontSize: 13, fontWeight: 700, color: urgent ? "var(--red)" : block.color }}>{block.label}</span>
           <span style={{ fontSize: 11, color: urgent ? "var(--red)" : "var(--tx3)" }}>{block.squad ? (pr[block.id] || "Sin asignar") : block.fixed}</span>

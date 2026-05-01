@@ -27,8 +27,9 @@ const TabFocos = React.memo(function TabFocos({ items, wd, setWd, save, activeSq
   const [draft, setDraft] = useState({});
   const [saved, setSaved] = useState(false);
   const [editIdx, setEditIdx] = useState(null);
+  const [confirmDelIdx, setConfirmDelIdx] = useState(null);
 
-  useEffect(() => { setDraft({}); setSaved(false); setEditIdx(null); }, [activeSquad]);
+  useEffect(() => { setDraft({}); setSaved(false); setEditIdx(null); setConfirmDelIdx(null); }, [activeSquad]);
 
   const updateDraft = useCallback((field, val) => setDraft((prev) => ({ ...prev, [field]: val })), []);
   const hasDraft = !!(draft.focos?.trim() || draft.blocker?.trim() || draft.necesito?.trim());
@@ -110,7 +111,9 @@ const TabFocos = React.memo(function TabFocos({ items, wd, setWd, save, activeSq
                 {entry.necesito?.trim() && <div style={{ fontSize: 13, color: "var(--yellow)", marginBottom: 2 }}>🤝 {entry.necesito}{entry.necesito_quien ? ` → ${shortName(entry.necesito_quien)}` : ""}{entry.necesito_cuando ? ` · ${new Date(entry.necesito_cuando + "T12:00:00").toLocaleDateString("es-MX", { day: "numeric", month: "short" })}` : ""}</div>}
                 <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
                   <span onClick={() => editEntry(idx)} style={{ fontSize: 10, color: "var(--blue)", cursor: "pointer" }}>Editar</span>
-                  <span onClick={() => deleteEntry(idx)} style={{ fontSize: 10, color: "var(--tx3)", cursor: "pointer" }}>Borrar</span>
+                  {confirmDelIdx === idx
+                    ? <><span onClick={() => { deleteEntry(idx); setConfirmDelIdx(null); }} style={{ fontSize: 10, color: "var(--red)", cursor: "pointer", fontWeight: 600 }}>Confirmar</span><span onClick={() => setConfirmDelIdx(null)} style={{ fontSize: 10, color: "var(--tx3)", cursor: "pointer" }}>Cancelar</span></>
+                    : <span onClick={() => setConfirmDelIdx(idx)} style={{ fontSize: 10, color: "var(--tx3)", cursor: "pointer" }}>Borrar</span>}
                 </div>
               </div>
             ))}

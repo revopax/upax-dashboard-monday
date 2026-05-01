@@ -54,6 +54,11 @@ export function PersonSelect({ value, onChange, style = {} }) {
 export function CopyModal({ text, onClose }) {
   const ref = useRef(null);
   useEffect(() => { if (ref.current) { ref.current.focus(); ref.current.select(); } }, []);
+  useEffect(() => {
+    const handleKey = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [onClose]);
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.4)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200 }} onClick={onClose}>
       <div onClick={(e) => e.stopPropagation()} style={{ background: "var(--bg2)", borderRadius: "var(--r-lg)", boxShadow: "0 24px 48px rgba(0,0,0,.15)", padding: 28, width: "90%", maxWidth: 620 }}>

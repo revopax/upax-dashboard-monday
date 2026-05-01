@@ -13,6 +13,7 @@ const TabCompromisos = React.memo(function TabCompromisos({ wd, setWd, save, ana
   const [syncing, setSyncing] = useState(null);
   const [prevComps, setPrevComps] = useState([]);
   const [loadingPrev, setLoadingPrev] = useState(true);
+  const [confirmDelIdx, setConfirmDelIdx] = useState(null);
   const setComps = (c) => { const n = { ...wd, compromisos: c }; setWd(n); save(n); };
 
   useEffect(() => {
@@ -102,7 +103,9 @@ const TabCompromisos = React.memo(function TabCompromisos({ wd, setWd, save, ana
               <button onClick={() => { const ns = c.status === "done" ? "pending" : "done"; setComps(comps.map((x, j) => j === i ? { ...x, status: ns, pct: ns === "done" ? 100 : (x.pct || 0) } : x)); }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 14, padding: 0 }}>{c.status === "done" ? "✅" : "⬜"}</button>
               <div style={{ display: "flex", gap: 3, alignItems: "center" }}>
                 <input value={c.que} onChange={(e) => setComps(comps.map((x, j) => j === i ? { ...x, que: e.target.value } : x))} placeholder="Compromiso..." style={{ flex: 1, background: "transparent", border: "none", fontSize: 12, fontFamily: "var(--sans)", color: c.status === "done" ? "var(--tx3)" : "var(--tx)", outline: "none", textDecoration: c.status === "done" ? "line-through" : "none" }} />
-                <button onClick={() => setComps(comps.filter((_, j) => j !== i))} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--border)", fontSize: 11 }}>✕</button>
+                {confirmDelIdx === i
+                  ? <><button onClick={() => { setComps(comps.filter((_, j) => j !== i)); setConfirmDelIdx(null); }} style={{ background: "var(--red)", color: "#fff", border: "none", borderRadius: 4, padding: "1px 6px", fontSize: 10, fontWeight: 600, cursor: "pointer" }}>Eliminar</button><button onClick={() => setConfirmDelIdx(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--tx3)", fontSize: 10 }}>No</button></>
+                  : <button onClick={() => setConfirmDelIdx(i)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--border)", fontSize: 11 }}>✕</button>}
               </div>
               <PersonSelect value={c.quien} onChange={(e) => setComps(comps.map((x, j) => j === i ? { ...x, quien: e.target.value } : x))} />
               <input type="date" value={c.cuando} onChange={(e) => setComps(comps.map((x, j) => j === i ? { ...x, cuando: e.target.value } : x))} style={{ background: "var(--bg2)", border: "1px solid var(--bg4)", borderRadius: "var(--r-sm)", padding: "3px 4px", fontSize: 10, color: "var(--tx)", outline: "none" }} />

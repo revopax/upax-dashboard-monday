@@ -1,9 +1,16 @@
 'use client'
-import React from 'react'
+import React, { useEffect } from 'react'
 import { SQUADS } from '../lib/constants'
 import { normalizeSquad, parseTL, isOverdue, shortName } from '../lib/utils'
 
 function PhaseModal({ phaseModal, onClose }) {
+  useEffect(() => {
+    if (!phaseModal) return;
+    const handleKey = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [phaseModal, onClose]);
+
   if (!phaseModal) return null;
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)", zIndex: 9998, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }} onClick={onClose}>
