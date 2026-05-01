@@ -41,12 +41,14 @@ select{-webkit-appearance:auto}
   .mobile-hide{display:none!important}
   .mobile-full{width:100%!important;min-width:0!important}
   .kpi-grid-mobile{grid-template-columns:repeat(2,1fr)!important}
-  .compromisos-row{grid-template-columns:26px 1fr 110px 50px!important}
+  .compromisos-row{grid-template-columns:26px 1fr 80px 50px!important}
   .compromisos-row>*:nth-child(4){display:none!important}
   .compromisos-row>*:nth-child(6){display:none!important}
 }
 @media(max-width:480px){
   .mobile-xs-hide{display:none!important}
+  .compromisos-row{grid-template-columns:26px 1fr 50px!important}
+  .compromisos-row>*:nth-child(3){display:none!important}
 }
 button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 select:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
