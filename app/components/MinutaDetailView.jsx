@@ -486,9 +486,15 @@ function PdfButton({ text, dateStr, wd, analysis, gddData }) {
 </body>
 </html>`;
 
-    const win = window.open("", "_blank", "width=820,height=900");
-    if (win) { win.document.write(html); win.document.close(); }
-    else { alert("Habilita popups para este sitio para generar el PDF"); }
+    const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+    const dlUrl = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = dlUrl;
+    anchor.download = "minuta-weekly.html";
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+    URL.revokeObjectURL(dlUrl);
   }
 
   return (
