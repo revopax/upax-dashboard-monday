@@ -92,7 +92,7 @@ const TabPanorama = React.memo(function TabPanorama({ analysis: an, items, onDri
       {sec === "alertas" && (
         <div>
           {[
-            { items: (an.overdue || []).sort((a, b) => (parseTL(a.column_values?.timerange_mkzcqv0j).end || TODAY) - (parseTL(b.column_values?.timerange_mkzcqv0j).end || TODAY)), label: "🔴 Vencidos", color: "var(--red)", extra: (it) => { const d = parseTL(it.column_values?.timerange_mkzcqv0j).end ? daysDiff(TODAY, parseTL(it.column_values?.timerange_mkzcqv0j).end) : 0; return <span style={{ fontFamily: "var(--mono)", color: "var(--red)", fontWeight: 700, minWidth: 30, fontSize: 10 }}>-{d}d</span>; } },
+            { items: (an.overdue || []).sort((a, b) => (parseTL(a.column_values?.timerange_mkzcqv0j).end || TODAY) - (parseTL(b.column_values?.timerange_mkzcqv0j).end || TODAY)), label: "🔴 Vencidos", color: "var(--red)", extra: (it) => { const tl = parseTL(it.column_values?.timerange_mkzcqv0j); const d = tl.end ? daysDiff(TODAY, tl.end) : 0; return <span style={{ fontFamily: "var(--mono)", color: "var(--red)", fontWeight: 700, minWidth: 30, fontSize: 10 }}>-{d}d</span>; } },
             { items: an.stoppedWeek || [], label: "🚫 Detenidos esta semana", color: "var(--red)" },
             { items: an.noCrono || [], label: "📅 Sprint sin Fecha", color: "var(--yellow)" },
             { items: an.backlogWithDates || [], label: "📅 Backlog con Fecha", color: "var(--yellow)" },
