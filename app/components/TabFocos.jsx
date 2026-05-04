@@ -29,7 +29,7 @@ const TabFocos = React.memo(function TabFocos({ items, wd, setWd, save, activeSq
   const [editIdx, setEditIdx] = useState(null);
   const [confirmDelIdx, setConfirmDelIdx] = useState(null);
 
-  useEffect(() => { setDraft({}); setSaved(false); setEditIdx(null); setConfirmDelIdx(null); }, [activeSquad]);
+  useEffect(() => { setDraft({}); setSaved(false); setEditIdx(null); setConfirmDelIdx(null); setShowForm(false); }, [activeSquad]);
 
   const updateDraft = useCallback((field, val) => setDraft((prev) => ({ ...prev, [field]: val })), []);
   const hasDraft = !!(draft.focos?.trim() || draft.blocker?.trim() || draft.necesito?.trim());
@@ -40,11 +40,11 @@ const TabFocos = React.memo(function TabFocos({ items, wd, setWd, save, activeSq
     if (editIdx !== null) { newEntries = [...entries]; newEntries[editIdx] = { ...draft, ts: Date.now() }; setEditIdx(null); }
     else newEntries = [...entries, { ...draft, ts: Date.now() }];
     const n = { ...wd, focos: { ...wd.focos, [activeSquad]: newEntries } };
-    setWd(n); save(n); setDraft({}); setSaved(true);
+    setWd(n); save(n); setDraft({}); setShowForm(false); setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
   const deleteEntry = (idx) => { const n = { ...wd, focos: { ...wd.focos, [activeSquad]: entries.filter((_, i) => i !== idx) } }; setWd(n); save(n); };
-  const editEntry = (idx) => { setDraft(entries[idx]); setEditIdx(idx); };
+  const editEntry = (idx) => { setDraft(entries[idx]); setEditIdx(idx); setShowForm(true); };
 
   const draftRef = useRef(updateDraft);
   draftRef.current = updateDraft;
@@ -117,18 +117,29 @@ const TabFocos = React.memo(function TabFocos({ items, wd, setWd, save, activeSq
                 </div>
               </div>
             ))}
-            <div style={{ padding: entries.length > 0 ? "10px 0 0" : 0, borderTop: entries.length > 0 ? "1px dashed var(--bg4)" : "none" }}>
-              <SquadInputSection label="Focos" icon="🎯" field="focos" placeholder="Top 3: campaña X, proyecto Y, entregable Z..." rows={3} draft={draft} updateDraft={updateDraft} />
-              <SquadInputSection label="Blocker" icon="🚫" field="blocker" placeholder="¿Algo detenido?" rows={1} draft={draft} updateDraft={updateDraft} showMeta />
-              <SquadInputSection label="Necesito" icon="🤝" field="necesito" placeholder="¿Qué necesitas de otro squad?" rows={1} draft={draft} updateDraft={updateDraft} showMeta />
-              <div style={{ display: "flex", gap: 6, alignItems: "center", justifyContent: "flex-end" }}>
-                {saved && <span style={{ fontSize: 11, color: "var(--green)", fontWeight: 600 }}>✓ Guardado</span>}
-                {editIdx !== null && <span onClick={() => { setDraft({}); setEditIdx(null); }} style={{ fontSize: 11, color: "var(--tx3)", cursor: "pointer" }}>Cancelar</span>}
-                <button onClick={saveDraft} disabled={!hasDraft} style={{ background: hasDraft ? "var(--tx)" : "var(--bg4)", color: hasDraft ? "var(--bg)" : "var(--tx3)", border: "none", borderRadius: 8, padding: "8px 20px", fontSize: 12, fontWeight: 700, cursor: hasDraft ? "pointer" : "default" }}>
-                  {editIdx !== null ? "Actualizar" : "Guardar"}
+            {entries.length > 0 && !showForm && editIdx === null && (
+              <div style={{ padding: "10px 0 0", borderTop: "1px dashed var(--bg4)", textAlign: "center" }}>
+                {saved && <span style={{ fontSize: 11, color: "var(--green)", fontWeight: 600, marginRight: 8 }}>✓ Guardado</span>}
+                <button onClick={() => setShowForm(true)} style={{ background: "var(--bg3)", color: "var(--blue)", border: "none", borderRadius: 8, padding: "8px 20px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                  + Agregar foco
                 </button>
               </div>
-            </div>
+            )}
+            {(showForm || editIdx !== null || entries.length === 0) && (
+              <div style={{ padding: entries.length > 0 ? "10px 0 0" : 0, borderTop: entries.length > 0 ? "1px dashed var(--bg4)" : "none" }}>
+                <SquadInputSection label="Focos" icon="🎯" field="focos" placeholder="Top 3: campaña X, proyecto Y, entregable Z..." rows={3} draft={draft} updateDraft={updateDraft} />
+                <SquadInputSection label="Blocker" icon="🚫" field="blocker" placeholder="¿Algo detenido?" rows={1} draft={draft} updateDraft={updateDraft} showMeta />
+                <SquadInputSection label="Necesito" icon="🤝" field="necesito" placeholder="¿Qué necesitas de otro squad?" rows={1} draft={draft} updateDraft={updateDraft} showMeta />
+                <div style={{ display: "flex", gap: 6, alignItems: "center", justifyContent: "flex-end" }}>
+                  {saved && <span style={{ fontSize: 11, color: "var(--green)", fontWeight: 600 }}>✓ Guardado</span>}
+                  {editIdx !== null && <span onClick={() => { setDraft({}); setEditIdx(null); }} style={{ fontSize: 11, color: "var(--tx3)", cursor: "pointer" }}>Cancelar</span>}
+                  {entries.length > 0 && editIdx === null && <span onClick={() => { setDraft({}); setShowForm(false); }} style={{ fontSize: 11, color: "var(--tx3)", cursor: "pointer" }}>Cancelar</span>}
+                  <button onClick={saveDraft} disabled={!hasDraft} style={{ background: hasDraft ? "var(--tx)" : "var(--bg4)", color: hasDraft ? "var(--bg)" : "var(--tx3)", border: "none", borderRadius: 8, padding: "8px 20px", fontSize: 12, fontWeight: 700, cursor: hasDraft ? "pointer" : "default" }}>
+                    {editIdx !== null ? "Actualizar" : "Guardar"}
+                  </button>
+                </div>
+              </div>
+            )}
           </Card>
           <div style={{ fontSize: 11, fontWeight: 700, color: "var(--tx3)", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>Items activos · {sqItems.length}</div>
           <div style={{ maxHeight: 340, overflowY: "auto" }}>
