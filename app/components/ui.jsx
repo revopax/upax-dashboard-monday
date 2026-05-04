@@ -193,11 +193,11 @@ export function CopyModal({ text, onClose }) {
     return () => window.removeEventListener('keydown', handleKey);
   }, [onClose]);
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.4)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200 }} onClick={onClose}>
+    <div role="dialog" aria-modal="true" aria-label="Copiar minuta" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.4)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200 }} onClick={onClose}>
       <div onClick={(e) => e.stopPropagation()} style={{ background: "var(--bg2)", borderRadius: "var(--r-lg)", boxShadow: "0 24px 48px rgba(0,0,0,.15)", padding: 28, width: "90%", maxWidth: 620 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
           <span style={{ fontSize: 17, fontWeight: 700 }}>Copiar minuta</span>
-          <button onClick={onClose} style={{ background: "var(--bg3)", border: "none", width: 30, height: 30, borderRadius: 15, fontSize: 14, cursor: "pointer", color: "var(--tx3)" }}>✕</button>
+          <button onClick={onClose} aria-label="Cerrar" style={{ background: "var(--bg3)", border: "none", width: 30, height: 30, borderRadius: 15, fontSize: 14, cursor: "pointer", color: "var(--tx3)" }}>✕</button>
         </div>
         <textarea ref={ref} readOnly value={text} style={{ width: "100%", height: 320, background: "var(--bg3)", color: "var(--tx)", border: "none", borderRadius: "var(--r)", padding: 16, fontSize: 12, fontFamily: "var(--mono)", resize: "vertical", outline: "none", lineHeight: 1.7 }} />
         <button onClick={async () => {
