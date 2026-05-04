@@ -106,3 +106,86 @@ describe('tokens.js <-> css.js cross-validation', () => {
     });
   });
 });
+
+// Component structural tests
+import { Button, Skeleton, Card } from '../../components/ui.jsx';
+
+describe('Button component', () => {
+  it('is exported as a function', () => {
+    expect(typeof Button).toBe('function');
+  });
+
+  it('accepts every variant x size without throwing', () => {
+    const variants = ['primary', 'secondary', 'ghost', 'danger', 'cta'];
+    const sizes = ['sm', 'md', 'lg'];
+    for (const variant of variants) {
+      for (const size of sizes) {
+        expect(() => Button({ variant, size, children: 'Test' })).not.toThrow();
+      }
+    }
+  });
+
+  it('defaults to variant="secondary" size="md"', () => {
+    const result = Button({ children: 'Test' });
+    expect(result).toBeTruthy();
+    expect(result.type).toBe('button');
+  });
+
+  it('passes extra props through', () => {
+    const result = Button({ children: 'X', disabled: true });
+    expect(result.props.disabled).toBe(true);
+  });
+});
+
+describe('Skeleton component', () => {
+  it('is exported as a function', () => {
+    expect(typeof Skeleton).toBe('function');
+  });
+
+  it('accepts each type without throwing', () => {
+    for (const type of ['line', 'kpi', 'card', 'row']) {
+      expect(() => Skeleton({ type })).not.toThrow();
+    }
+  });
+
+  it('renders count items', () => {
+    const result = Skeleton({ type: 'line', count: 3 });
+    expect(result.props.children).toHaveLength(3);
+  });
+
+  it('defaults to count=1', () => {
+    const result = Skeleton({ type: 'row' });
+    expect(result.props.children).toHaveLength(1);
+  });
+});
+
+describe('Card backward compat', () => {
+  it('works with original API: Card({ children, style })', () => {
+    const result = Card({ children: 'Hello', style: { padding: 10 } });
+    expect(result).toBeTruthy();
+    expect(result.type).toBe('div');
+    expect(result.props.style.padding).toBe(10);
+    expect(result.props.style.boxShadow).toBe('var(--shadow)');
+  });
+
+  it('works with new variant API', () => {
+    for (const variant of ['default', 'elevated', 'flat', 'dashed']) {
+      expect(() => Card({ variant, children: 'Test' })).not.toThrow();
+    }
+  });
+
+  it('elevated variant uses shadow-lg', () => {
+    const result = Card({ variant: 'elevated', children: 'X' });
+    expect(result.props.style.boxShadow).toBe('var(--shadow-lg)');
+  });
+
+  it('accent prop adds borderTop', () => {
+    const result = Card({ accent: '#FF0000', children: 'X' });
+    expect(result.props.style.borderTop).toBe('3px solid #FF0000');
+  });
+
+  it('no accent = no borderTop', () => {
+    const result = Card({ children: 'X' });
+    expect(result.props.style.borderTop).toBeUndefined();
+  });
+});
