@@ -55,7 +55,12 @@ select{-webkit-appearance:auto}
 button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 select:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 input:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
-textarea:focus-visible{outline:2px solid var(--blue);outline-offset:2px}`;
+textarea:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+@media(prefers-reduced-motion:reduce){
+  .fade{animation:none!important}
+  *{animation-duration:0.01ms!important;animation-iteration-count:1!important;transition-duration:0.01ms!important}
+}`;
 
 /* ═══════════════════════════════════════════════════════════════
    SECTION 7: SHARED UI COMPONENTS
