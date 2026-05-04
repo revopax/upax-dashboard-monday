@@ -84,13 +84,13 @@ const TabMinutasInline = React.memo(function TabMinutasInline({ wd, analysis, gd
               </div>
             </div>
             <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
-              <button onClick={(e) => copyMinuta(k, e)} style={{ background: copied === k ? "var(--green)" : "var(--bg3)", color: copied === k ? "#fff" : "var(--tx2)", border: "1px solid var(--bg4)", borderRadius: "var(--r-sm)", padding: "4px 10px", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
+              <button onClick={(e) => copyMinuta(k, e)} aria-label="Copiar minuta" style={{ background: copied === k ? "var(--green)" : "var(--bg3)", color: copied === k ? "#fff" : "var(--tx2)", border: "1px solid var(--bg4)", borderRadius: "var(--r-sm)", padding: "4px 10px", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
                 {copied === k ? "✓" : "📋"}
               </button>
-              <button onClick={(e) => { e.stopPropagation(); openMinuta(k, true); }} style={{ background: "var(--bg3)", color: "var(--tx2)", border: "1px solid var(--bg4)", borderRadius: "var(--r-sm)", padding: "4px 10px", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
+              <button onClick={(e) => { e.stopPropagation(); openMinuta(k, true); }} aria-label="Editar minuta" style={{ background: "var(--bg3)", color: "var(--tx2)", border: "1px solid var(--bg4)", borderRadius: "var(--r-sm)", padding: "4px 10px", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
                 ✏️
               </button>
-              <button onClick={(e) => deleteMinuta(k, e)} style={{ background: "var(--bg3)", color: "var(--red)", border: "1px solid var(--bg4)", borderRadius: "var(--r-sm)", padding: "4px 10px", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
+              <button onClick={(e) => deleteMinuta(k, e)} aria-label="Eliminar minuta" style={{ background: "var(--bg3)", color: "var(--red)", border: "1px solid var(--bg4)", borderRadius: "var(--r-sm)", padding: "4px 10px", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
                 🗑
               </button>
             </div>
