@@ -20,3 +20,13 @@ describe('UX-20: kpi-grid-mobile regression', () => {
     expect(CSS).toContain('.kpi-grid-mobile{grid-template-columns:repeat(2,1fr)!important}');
   });
 });
+
+describe('UX-23: presenter mode scaling', () => {
+  it('uses transform scale on .presenter-mode .fade', () => {
+    expect(CSS).toContain('.presenter-mode .fade{transform:scale(var(--ps));transform-origin:top left}');
+  });
+
+  it('does not use the broken font-size calc hack', () => {
+    expect(CSS).not.toContain('.presenter-mode .fade *{font-size:calc(');
+  });
+});

@@ -25,10 +25,7 @@ select{-webkit-appearance:auto}
 ::selection{background:rgba(0,122,255,.15)}
 :root{--ps:1}
 .presenter-mode{--ps:1.25}
-.presenter-mode .fade *{font-size:calc(var(--font-size,13px)*var(--ps,1)) !important}
-/* Fallback selectores para texto inline — más específicos que el hack anterior */
-.presenter-mode [style]{transform-origin:top left}
-.presenter-mode .card-title{font-size:calc(14px * var(--ps)) !important}
+.presenter-mode .fade{transform:scale(var(--ps));transform-origin:top left}
 .sticky-nav{position:sticky;top:0;z-index:90;background:var(--bg);border-bottom:1px solid var(--bg4);padding:0 20px;margin:0 -20px;box-shadow:0 1px 0 var(--bg4),0 4px 12px rgba(0,0,0,.04);scrollbar-width:none;}
 .sticky-nav::-webkit-scrollbar{display:none;}
 
