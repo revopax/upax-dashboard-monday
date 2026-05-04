@@ -549,8 +549,8 @@ export default function App() {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <span style={{ fontSize: 11, color: "var(--tx2)", opacity: 0.5, fontFamily: "var(--mono)" }}>v9.0 · mkt corp upax</span>
               <div style={{ display:"flex", gap:6, alignItems:"center" }}>
-                <button onClick={() => setAuditOpen(!auditOpen)} style={{ background:"transparent", color:"var(--tx3)", border:"1px solid rgba(0,0,0,.1)", borderRadius:"var(--r-sm)", padding:"3px 10px", fontSize:10, cursor:"pointer", opacity:0.5 }}>Audit</button>
-                <button onClick={() => setConfirmReset(true)} title="Limpiar focos, compromisos y presentadores de la sesion actual" style={{ background: "transparent", color: "var(--red)", border: "1px solid rgba(255,59,48,.2)", borderRadius: "var(--r-sm)", padding: "3px 10px", fontSize: 10, cursor: "pointer", opacity: 0.5 }}>Reset sesion</button>
+                <button onClick={() => setAuditOpen(!auditOpen)} onMouseEnter={e => e.currentTarget.style.opacity = "1"} onMouseLeave={e => e.currentTarget.style.opacity = "0.7"} style={{ background:"transparent", color:"var(--tx3)", border:"1px solid rgba(0,0,0,.1)", borderRadius:"var(--r-sm)", padding:"3px 10px", fontSize:10, cursor:"pointer", opacity:0.7 }}>Audit</button>
+                <button onClick={() => setConfirmReset(true)} onMouseEnter={e => e.currentTarget.style.opacity = "1"} onMouseLeave={e => e.currentTarget.style.opacity = "0.7"} title="Limpiar focos, compromisos y presentadores de la sesion actual" style={{ background: "transparent", color: "var(--red)", border: "1px solid rgba(255,59,48,.2)", borderRadius: "var(--r-sm)", padding: "3px 10px", fontSize: 10, cursor: "pointer", opacity: 0.7 }}>Reset sesion</button>
               </div>
             </div>
             {auditOpen && <AuditLogPanel />}
