@@ -17,8 +17,62 @@ export function Bar({ segs, h = 20 }) {
   );
 }
 
-export function Card({ children, style = {} }) {
-  return <div style={{ background: "var(--bg2)", borderRadius: "var(--r)", boxShadow: "var(--shadow)", padding: "18px 20px", ...style }}>{children}</div>;
+export function Card({ variant, accent, children, style = {}, ...props }) {
+  const base = { background: "var(--bg2)", borderRadius: "var(--r)", padding: "18px 20px" };
+  const variants = {
+    default:  { boxShadow: "var(--shadow)" },
+    elevated: { boxShadow: "var(--shadow-lg)" },
+    flat:     {},
+    dashed:   { border: "2px dashed var(--border)", textAlign: "center" },
+  };
+  const accentStyle = accent ? { borderTop: `3px solid ${accent}` } : {};
+  return <div {...props} style={{ ...base, ...variants[variant || "default"], ...accentStyle, ...style }}>{children}</div>;
+}
+
+export function Button({ variant = "secondary", size = "md", children, ...props }) {
+  const v = {
+    primary:   { background: "var(--tx)", color: "var(--bg)", border: "none" },
+    cta:       { background: "var(--blue)", color: "#fff", border: "none" },
+    secondary: { background: "var(--bg2)", color: "var(--tx2)", border: "1px solid var(--bg4)" },
+    ghost:     { background: "transparent", color: "var(--tx2)", border: "none" },
+    danger:    { background: "var(--red)", color: "#fff", border: "none" },
+  };
+  const s = {
+    sm: { padding: "4px 10px", fontSize: "var(--ts-xs)" },
+    md: { padding: "8px 16px", fontSize: "var(--ts-base)" },
+    lg: { padding: "12px 24px", fontSize: "var(--ts-md)" },
+  };
+  return (
+    <button {...props} style={{
+      ...v[variant] || v.secondary,
+      ...s[size] || s.md,
+      borderRadius: "var(--r-sm)", fontWeight: 600, cursor: "pointer",
+      fontFamily: "var(--sans)", transition: "opacity .15s",
+      ...(props.style || {}),
+    }}>
+      {children}
+    </button>
+  );
+}
+
+export function Skeleton({ type = "line", count = 1 }) {
+  const types = {
+    line: { height: 16, borderRadius: "var(--r-xs)" },
+    kpi:  { height: 48, borderRadius: "var(--r-sm)" },
+    card: { height: 80, borderRadius: "var(--r)" },
+    row:  { height: 28, borderRadius: "var(--r-xs)" },
+  };
+  const t = types[type] || types.line;
+  return (
+    <>
+      {Array.from({ length: count }, (_, i) => (
+        <div key={i} style={{
+          ...t, width: "100%", background: "var(--bg3)",
+          marginBottom: 6, animation: "pulse 1.5s ease-in-out infinite", opacity: 0.5,
+        }} />
+      ))}
+    </>
+  );
 }
 
 export function Chip({ label, active, color, onClick }) {
