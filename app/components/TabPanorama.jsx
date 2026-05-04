@@ -27,7 +27,16 @@ const TabPanorama = React.memo(function TabPanorama({ analysis: an, items }) {
         </div>
       </div>
 
-      {sec === "squads" && SQUADS.map((sq) => {
+      {sec === "squads" && (() => {
+        const hasData = SQUADS.some(sq => an.bySquad[sq.name]);
+        if (!hasData) return (
+          <Card style={{ textAlign: "center", padding: 24 }}>
+            <div style={{ fontSize: 28, marginBottom: 4 }}>📊</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: "var(--tx3)" }}>Sin datos de Monday</div>
+            <div style={{ fontSize: 11, color: "var(--tx3)", marginTop: 4 }}>Presiona Sync para conectar.</div>
+          </Card>
+        );
+        return SQUADS.map((sq) => {
         const d = an.bySquad[sq.name]; if (!d) return null;
         const act = (d.phases["🚧 Sprint"] || 0) + (d.phases["👀 Review"] || 0) + (d.phases["⚙️ Modificación"] || 0);
         const sqOverdue = (an.overdue || []).filter((it) => normalizeSquad(it.column_values?.color_mkz0s203) === sq.name);
@@ -46,7 +55,7 @@ const TabPanorama = React.memo(function TabPanorama({ analysis: an, items }) {
             {sqOverdue.length > 0 && (
               <div style={{ marginTop: 8, background: "rgba(255,59,48,.06)", borderRadius: 8, padding: "6px 10px", borderLeft: "3px solid var(--red)" }}>
                 <div style={{ fontSize: 10, fontWeight: 700, color: "var(--red)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 3 }}>Vencidos · {sqOverdue.length}</div>
-                {sqOverdue.map((it) => { const dd = parseTL(it.column_values?.timerange_mkzcqv0j).end ? daysDiff(TODAY, parseTL(it.column_values?.timerange_mkzcqv0j).end) : 0; return <div key={it.id} style={{ display: "flex", gap: 4, alignItems: "center", fontSize: 11, padding: "1px 0" }}><span style={{ fontFamily: "var(--mono)", color: "var(--red)", fontWeight: 700, minWidth: 28, fontSize: 10 }}>-{dd}d</span><span style={{ flex: 1, color: "var(--tx2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.name}</span><span style={{ color: "var(--tx3)", fontSize: 10 }}>{shortName(it.column_values?.person)}</span></div>; })}
+                {sqOverdue.map((it) => { const tl = parseTL(it.column_values?.timerange_mkzcqv0j); const dd = tl.end ? daysDiff(TODAY, tl.end) : 0; return <div key={it.id} style={{ display: "flex", gap: 4, alignItems: "center", fontSize: 11, padding: "1px 0" }}><span style={{ fontFamily: "var(--mono)", color: "var(--red)", fontWeight: 700, minWidth: 28, fontSize: 10 }}>-{dd}d</span><span style={{ flex: 1, color: "var(--tx2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.name}</span><span style={{ color: "var(--tx3)", fontSize: 10 }}>{shortName(it.column_values?.person)}</span></div>; })}
               </div>
             )}
             {sqNoCrono.length > 0 && (
@@ -57,7 +66,8 @@ const TabPanorama = React.memo(function TabPanorama({ analysis: an, items }) {
             )}
           </Card>
         );
-      })}
+      });
+      })()}
 
       {sec === "alertas" && (
         <div>
