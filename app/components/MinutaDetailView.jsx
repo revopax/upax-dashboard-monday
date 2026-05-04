@@ -538,7 +538,7 @@ function SlackButton({ text }) {
 function MinutaDetailView({ weekKey, data, todayWd, todayAnalysis, gddData, blockTimes, initialEditMode = false, onBack, onClose }) {
   const isToday = weekKey === STORE_KEY;
   const visualWd = isToday ? todayWd : (data || {});
-  const visualAn = todayAnalysis;
+  const visualAn = isToday ? todayAnalysis : (data?.analysis_snapshot || todayAnalysis);
   const visualGdd = isToday ? gddData : (data?.gdd_snapshot || gddData);
   const rawText = isToday
     ? generateMinuta(todayWd, todayAnalysis, gddData, blockTimes)
