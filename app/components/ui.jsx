@@ -94,20 +94,31 @@ export function Alerta({ icon, text, color = "var(--yellow)" }) {
 export function PersonSelect({ value, onChange, style = {} }) {
   const [open, setOpen] = useState(false);
   const [filter, setFilter] = useState("");
+  const [activeIdx, setActiveIdx] = useState(-1);
   const ref = useRef(null);
+  const listRef = useRef(null);
   const groups = [...new Set(PERSONAS.map((p) => p.squad))];
   const lf = filter.toLowerCase();
   const filtered = lf ? PERSONAS.filter(p => p.name.toLowerCase().includes(lf) || p.squad.toLowerCase().includes(lf)) : PERSONAS;
   const filteredGroups = groups.filter(g => filtered.some(p => p.squad === g));
+  // Flat list for keyboard nav
+  const flatList = filteredGroups.flatMap(g => filtered.filter(p => p.squad === g));
 
   useEffect(() => {
     if (!open) return;
     const handleClick = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
-    const handleKey = (e) => { if (e.key === "Escape") setOpen(false); };
     document.addEventListener("mousedown", handleClick);
-    document.addEventListener("keydown", handleKey);
-    return () => { document.removeEventListener("mousedown", handleClick); document.removeEventListener("keydown", handleKey); };
+    return () => { document.removeEventListener("mousedown", handleClick); };
   }, [open]);
+
+  useEffect(() => { if (open) setActiveIdx(-1); }, [open, filter]);
+
+  // Scroll active option into view
+  useEffect(() => {
+    if (activeIdx < 0 || !listRef.current) return;
+    const el = listRef.current.querySelector(`[data-idx="${activeIdx}"]`);
+    if (el) el.scrollIntoView({ block: "nearest" });
+  }, [activeIdx]);
 
   const select = (name) => {
     onChange({ target: { value: name } });
@@ -115,32 +126,53 @@ export function PersonSelect({ value, onChange, style = {} }) {
     setFilter("");
   };
 
+  const handleKeyDown = (e) => {
+    if (e.key === "Escape") { setOpen(false); return; }
+    if (!open) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActiveIdx(prev => Math.min(prev + 1, flatList.length - 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActiveIdx(prev => Math.max(prev - 1, 0));
+    } else if (e.key === "Enter" && activeIdx >= 0 && activeIdx < flatList.length) {
+      e.preventDefault();
+      select(flatList[activeIdx].name);
+    }
+  };
+
+  let optIdx = 0;
+
   return (
-    <div ref={ref} style={{ position: "relative", display: "inline-block", ...style }}>
-      <button type="button" onClick={() => { setOpen(!open); setFilter(""); }} style={{ background: "var(--bg2)", border: "1px solid var(--bg4)", borderRadius: 8, padding: "5px 8px", fontSize: 13, fontFamily: "var(--sans)", color: value ? "var(--tx)" : "var(--tx3)", cursor: "pointer", textAlign: "left", width: "100%", minWidth: 120 }}>
+    <div ref={ref} style={{ position: "relative", display: "inline-block", ...style }} onKeyDown={handleKeyDown}>
+      <button type="button" role="combobox" aria-expanded={open} aria-haspopup="listbox" aria-label={value ? `Persona: ${value}` : "Seleccionar persona"} onClick={() => { setOpen(!open); setFilter(""); }} style={{ background: "var(--bg2)", border: "1px solid var(--bg4)", borderRadius: 8, padding: "5px 8px", fontSize: 13, fontFamily: "var(--sans)", color: value ? "var(--tx)" : "var(--tx3)", cursor: "pointer", textAlign: "left", width: "100%", minWidth: 120 }}>
         {value || "Seleccionar..."}
-        <span style={{ float: "right", fontSize: 10, color: "var(--tx3)" }}>▼</span>
+        <span aria-hidden="true" style={{ float: "right", fontSize: 10, color: "var(--tx3)" }}>▼</span>
       </button>
       {open && (
-        <div style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 100, background: "var(--bg2)", border: "1px solid var(--bg4)", borderRadius: 8, boxShadow: "var(--shadow)", marginTop: 2, maxHeight: 240, overflowY: "auto", minWidth: 180 }}>
+        <div ref={listRef} role="listbox" aria-label="Lista de personas" style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 100, background: "var(--bg2)", border: "1px solid var(--bg4)", borderRadius: 8, boxShadow: "var(--shadow)", marginTop: 2, maxHeight: 240, overflowY: "auto", minWidth: 180 }}>
           <div style={{ padding: "4px 6px", borderBottom: "1px solid var(--bg4)" }}>
-            <input autoFocus type="text" value={filter} onChange={e => setFilter(e.target.value)} placeholder="Buscar..." style={{ width: "100%", background: "var(--bg3)", border: "none", borderRadius: 6, padding: "5px 8px", fontSize: 12, fontFamily: "var(--sans)", color: "var(--tx)", outline: "none" }} />
+            <input autoFocus type="text" value={filter} onChange={e => setFilter(e.target.value)} placeholder="Buscar..." aria-label="Filtrar personas" style={{ width: "100%", background: "var(--bg3)", border: "none", borderRadius: 6, padding: "5px 8px", fontSize: 12, fontFamily: "var(--sans)", color: "var(--tx)", outline: "none" }} />
           </div>
           {value && (
-            <div onClick={() => select("")} style={{ padding: "6px 10px", fontSize: 12, color: "var(--tx3)", cursor: "pointer", borderBottom: "1px solid var(--bg4)" }}>
+            <div role="option" aria-selected={false} onClick={() => select("")} style={{ padding: "6px 10px", fontSize: 12, color: "var(--tx3)", cursor: "pointer", borderBottom: "1px solid var(--bg4)" }}>
               Limpiar selección
             </div>
           )}
           {filteredGroups.map(g => (
-            <div key={g}>
+            <div key={g} role="group" aria-label={g}>
               <div style={{ padding: "4px 10px", fontSize: 10, fontWeight: 700, color: "var(--tx3)", textTransform: "uppercase", letterSpacing: "0.05em", background: "var(--bg3)" }}>{g}</div>
-              {filtered.filter(p => p.squad === g).map(p => (
-                <div key={p.name} onClick={() => select(p.name)} style={{ padding: "6px 10px", fontSize: 12, cursor: "pointer", background: p.name === value ? "rgba(0,122,255,.08)" : "transparent", color: p.name === value ? "var(--blue)" : "var(--tx)", fontWeight: p.name === value ? 600 : 400 }}
-                  onMouseEnter={e => e.currentTarget.style.background = "var(--bg3)"}
+              {filtered.filter(p => p.squad === g).map(p => {
+                const idx = optIdx++;
+                const isActive = idx === activeIdx;
+                return (
+                <div key={p.name} role="option" aria-selected={p.name === value} data-idx={idx} onClick={() => select(p.name)} style={{ padding: "6px 10px", fontSize: 12, cursor: "pointer", background: isActive ? "var(--bg3)" : p.name === value ? "rgba(0,122,255,.08)" : "transparent", color: p.name === value ? "var(--blue)" : "var(--tx)", fontWeight: p.name === value ? 600 : 400, outline: isActive ? "2px solid var(--blue)" : "none", outlineOffset: -2 }}
+                  onMouseEnter={e => { e.currentTarget.style.background = "var(--bg3)"; setActiveIdx(idx); }}
                   onMouseLeave={e => e.currentTarget.style.background = p.name === value ? "rgba(0,122,255,.08)" : "transparent"}>
                   {p.name}{p.star ? " ★" : ""}
                 </div>
-              ))}
+                );
+              })}
             </div>
           ))}
           {filteredGroups.length === 0 && (
