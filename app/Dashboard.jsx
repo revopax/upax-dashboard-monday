@@ -183,6 +183,18 @@ export default function App() {
     return () => clearInterval(as);
   }, [running, wd]);
 
+  useEffect(() => {
+    if (!running) return;
+    const handleKey = (e) => {
+      if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.target.tagName === "SELECT") return;
+      if (e.key === "ArrowRight") { e.preventDefault(); advanceBlock("next"); }
+      else if (e.key === "ArrowLeft") { e.preventDefault(); advanceBlock("prev"); }
+      else if (e.key === " ") { e.preventDefault(); pauseTimer(); }
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [running, advanceBlock, pauseTimer]);
+
   const eMin = elapsed / 60;
 
   const handleCopy = useCallback((text) => {
