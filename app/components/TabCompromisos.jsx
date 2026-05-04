@@ -6,6 +6,7 @@ import { shortName, pctColor } from '../lib/utils'
 import { storeGet, storeSet, storeList } from '../lib/storage'
 import { createMondayItem } from '../lib/api'
 import { generateMinuta } from '../lib/minuta'
+import { C, TS, R, F } from '../lib/tokens'
 import { Card, PersonSelect } from './ui'
 
 const TabCompromisos = React.memo(function TabCompromisos({ wd, setWd, save, analysis, onCopy, gddData }) {
@@ -95,21 +96,21 @@ const TabCompromisos = React.memo(function TabCompromisos({ wd, setWd, save, ana
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
         <h2 style={{ fontSize: 16, fontWeight: 700 }}>Compromisos</h2>
         <div style={{ display: "flex", gap: 4 }}>
-          {unsyncedCount > 0 && <button onClick={syncAllToMonday} disabled={syncing !== null} style={{ background: "var(--blue)", color: "#fff", border: "none", borderRadius: "var(--r-sm)", padding: "5px 12px", fontSize: 11, fontWeight: 700, cursor: syncing !== null ? "default" : "pointer", fontFamily: "var(--mono)", textTransform: "uppercase", opacity: syncing !== null ? 0.5 : 1 }}>{syncing === "all" ? `SYNCING ${unsyncedCount}...` : syncing !== null ? "SYNCING..." : `↑ SYNC ${unsyncedCount} → MONDAY`}</button>}
-          <button onClick={() => onCopy(generateMinuta(wd, analysis, gddData))} style={{ background: "var(--bg2)", color: "var(--tx2)", border: "1px solid var(--bg4)", borderRadius: "var(--r-sm)", padding: "5px 12px", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>📤 Minuta</button>
-          <button onClick={() => setComps([...comps, { id: Date.now(), que: "", quien: "", cuando: "", status: "pending" }])} style={{ background: "var(--tx)", color: "var(--bg)", border: "none", borderRadius: "var(--r-sm)", padding: "5px 14px", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "var(--mono)", textTransform: "uppercase" }}>+ AGREGAR</button>
+          {unsyncedCount > 0 && <button onClick={syncAllToMonday} disabled={syncing !== null} style={{ background: C.blue, color: "#fff", border: "none", borderRadius: R.sm, padding: "5px 12px", fontSize: 11, fontWeight: 700, cursor: syncing !== null ? "default" : "pointer", fontFamily: F.mono, textTransform: "uppercase", opacity: syncing !== null ? 0.5 : 1 }}>{syncing === "all" ? `SYNCING ${unsyncedCount}...` : syncing !== null ? "SYNCING..." : `↑ SYNC ${unsyncedCount} → MONDAY`}</button>}
+          <button onClick={() => onCopy(generateMinuta(wd, analysis, gddData))} style={{ background: C.bg2, color: C.tx2, border: `1px solid ${C.bg4}`, borderRadius: R.sm, padding: "5px 12px", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>📤 Minuta</button>
+          <button onClick={() => setComps([...comps, { id: Date.now(), que: "", quien: "", cuando: "", status: "pending" }])} style={{ background: C.tx, color: C.bg, border: "none", borderRadius: R.sm, padding: "5px 14px", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: F.mono, textTransform: "uppercase" }}>+ AGREGAR</button>
         </div>
       </div>
-      <div style={{ fontSize: 11, color: "var(--tx3)", marginBottom: 12, fontFamily: "var(--mono)" }}>→ Monday: grupo "Acuerdos Weeklys" · Qué + Quién + Cuándo</div>
+      <div style={{ fontSize: 11, color: C.tx3, marginBottom: 12, fontFamily: F.mono }}>→ Monday: grupo "Acuerdos Weeklys" · Qué + Quién + Cuándo</div>
 
       {!comps.length
-        ? <Card style={{ textAlign: "center", padding: 36, border: "2px dashed var(--border)" }}><div style={{ fontSize: 32, marginBottom: 8 }}>📝</div>
-          <div style={{ fontSize: 14, fontWeight: 600, color: "var(--tx2)", marginBottom: 6 }}>Sin compromisos aún</div>
-          <div style={{ fontSize: 12, color: "var(--tx3)", marginBottom: 16 }}>Cada compromiso: Qué + Quién + Cuándo</div>
-          <button onClick={() => setComps([...comps, { id: Date.now(), que: "", quien: "", cuando: "", status: "pending" }])} style={{ background: "var(--tx)", color: "var(--bg)", border: "none", borderRadius: "var(--r-sm)", padding: "8px 20px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>+ Agregar compromiso</button>
+        ? <Card style={{ textAlign: "center", padding: 36, border: `2px dashed ${C.border}` }}><div style={{ fontSize: 32, marginBottom: 8 }}>📝</div>
+          <div style={{ fontSize: 14, fontWeight: 600, color: C.tx2, marginBottom: 6 }}>Sin compromisos aún</div>
+          <div style={{ fontSize: 12, color: C.tx3, marginBottom: 16 }}>Cada compromiso: Qué + Quién + Cuándo</div>
+          <button onClick={() => setComps([...comps, { id: Date.now(), que: "", quien: "", cuando: "", status: "pending" }])} style={{ background: C.tx, color: C.bg, border: "none", borderRadius: R.sm, padding: "8px 20px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>+ Agregar compromiso</button>
         </Card>
         : <Card>
-          {!isMobile && <div style={{ display: "grid", gridTemplateColumns: "26px 1fr 130px 110px 50px 50px", gap: 4, padding: "4px 0 6px", fontSize: 10, fontWeight: 700, color: "var(--tx3)", textTransform: "uppercase", letterSpacing: 1, borderBottom: "1px solid var(--border)" }}><span /><span>Qué</span><span>Quién</span><span>Cuándo</span><span>%</span><span>Mon</span></div>}
+          {!isMobile && <div style={{ display: "grid", gridTemplateColumns: "26px 1fr 130px 110px 50px 50px", gap: 4, padding: "4px 0 6px", fontSize: 10, fontWeight: 700, color: C.tx3, textTransform: "uppercase", letterSpacing: 1, borderBottom: `1px solid ${C.border}` }}><span /><span>Qué</span><span>Quién</span><span>Cuándo</span><span>%</span><span>Mon</span></div>}
           {comps.map((c, i) => {
             const toggleDone = () => { const ns = c.status === "done" ? "pending" : "done"; setComps(comps.map((x, j) => j === i ? { ...x, status: ns, pct: ns === "done" ? 100 : (x.pct || 0) } : x)); };
             const updateQue = (e) => setComps(comps.map((x, j) => j === i ? { ...x, que: e.target.value } : x));
@@ -117,43 +118,43 @@ const TabCompromisos = React.memo(function TabCompromisos({ wd, setWd, save, ana
             const updateCuando = (e) => setComps(comps.map((x, j) => j === i ? { ...x, cuando: e.target.value } : x));
             const bumpPct = () => { const next = Math.min(100, (c.pct || 0) + 25); setComps(comps.map((x, j) => j === i ? { ...x, pct: next, status: next >= 100 ? "done" : x.status } : x)); };
             const deleteBtn = confirmDelIdx === i
-              ? <><button onClick={() => { setComps(comps.filter((_, j) => j !== i)); setConfirmDelIdx(null); }} style={{ background: "var(--red)", color: "#fff", border: "none", borderRadius: 4, padding: "1px 6px", fontSize: 10, fontWeight: 600, cursor: "pointer" }}>Eliminar</button><button onClick={() => setConfirmDelIdx(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--tx3)", fontSize: 10 }}>No</button></>
-              : <button onClick={() => setConfirmDelIdx(i)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--border)", fontSize: 11 }}>✕</button>;
+              ? <><button onClick={() => { setComps(comps.filter((_, j) => j !== i)); setConfirmDelIdx(null); }} style={{ background: C.red, color: "#fff", border: "none", borderRadius: 4, padding: "1px 6px", fontSize: 10, fontWeight: 600, cursor: "pointer" }}>Eliminar</button><button onClick={() => setConfirmDelIdx(null)} style={{ background: "none", border: "none", cursor: "pointer", color: C.tx3, fontSize: 10 }}>No</button></>
+              : <button onClick={() => setConfirmDelIdx(i)} style={{ background: "none", border: "none", cursor: "pointer", color: C.border, fontSize: 11 }}>✕</button>;
             const syncBtn = synced.includes(i)
-              ? <span style={{ fontSize: 10, color: "var(--green)", fontWeight: 700 }}>✓ Mon</span>
-              : <button onClick={() => syncToMonday(i)} disabled={!c.que || !c.quien || syncing === i || syncing === "all"} style={{ background: "var(--bg2)", color: "var(--blue)", border: "1px solid var(--bg4)", borderRadius: "var(--r-sm)", padding: "2px 6px", fontSize: 10, fontWeight: 600, cursor: "pointer", opacity: (!c.que?.trim() || !c.quien) ? 0.3 : 1 }}>{(syncing === i || (syncing === "all" && !synced.includes(i))) ? "..." : "→ Mon"}</button>;
+              ? <span style={{ fontSize: 10, color: C.green, fontWeight: 700 }}>✓ Mon</span>
+              : <button onClick={() => syncToMonday(i)} disabled={!c.que || !c.quien || syncing === i || syncing === "all"} style={{ background: C.bg2, color: C.blue, border: `1px solid ${C.bg4}`, borderRadius: R.sm, padding: "2px 6px", fontSize: 10, fontWeight: 600, cursor: "pointer", opacity: (!c.que?.trim() || !c.quien) ? 0.3 : 1 }}>{(syncing === i || (syncing === "all" && !synced.includes(i))) ? "..." : "→ Mon"}</button>;
 
             if (isMobile) return (
-              <div key={c.id || i} style={{ padding: "10px 0", borderBottom: "1px solid var(--border)" }}>
+              <div key={c.id || i} style={{ padding: "10px 0", borderBottom: `1px solid ${C.border}` }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
                   <button onClick={toggleDone} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 14, padding: 0 }}>{c.status === "done" ? "✅" : "⬜"}</button>
-                  <input value={c.que} onChange={updateQue} placeholder="Compromiso..." style={{ flex: 1, background: "transparent", border: "none", fontSize: 13, fontFamily: "var(--sans)", color: c.status === "done" ? "var(--tx3)" : "var(--tx)", outline: "none", textDecoration: c.status === "done" ? "line-through" : "none" }} />
+                  <input value={c.que} onChange={updateQue} placeholder="Compromiso..." style={{ flex: 1, background: "transparent", border: "none", fontSize: 13, fontFamily: F.sans, color: c.status === "done" ? C.tx3 : C.tx, outline: "none", textDecoration: c.status === "done" ? "line-through" : "none" }} />
                   {deleteBtn}
                 </div>
                 <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", paddingLeft: 30 }}>
                   <PersonSelect value={c.quien} onChange={updateQuien} style={{ flex: 1, minWidth: 100 }} />
-                  <input type="date" value={c.cuando} onChange={updateCuando} style={{ background: "var(--bg2)", border: "1px solid var(--bg4)", borderRadius: "var(--r-sm)", padding: "3px 4px", fontSize: 10, color: "var(--tx)", outline: "none" }} />
-                  <span style={{ fontFamily: "var(--mono)", fontSize: 11, fontWeight: 600, color: (c.pct || 0) >= 100 ? "var(--green)" : (c.pct || 0) >= 50 ? "var(--yellow)" : "var(--tx3)", cursor: "pointer" }} onClick={bumpPct}>{c.pct || 0}%</span>
+                  <input type="date" value={c.cuando} onChange={updateCuando} style={{ background: C.bg2, border: `1px solid ${C.bg4}`, borderRadius: R.sm, padding: "3px 4px", fontSize: 10, color: C.tx, outline: "none" }} />
+                  <span style={{ fontFamily: F.mono, fontSize: 11, fontWeight: 600, color: (c.pct || 0) >= 100 ? C.green : (c.pct || 0) >= 50 ? C.yellow : C.tx3, cursor: "pointer" }} onClick={bumpPct}>{c.pct || 0}%</span>
                   {syncBtn}
                 </div>
               </div>
             );
 
             return (
-              <div key={c.id || i} className="compromisos-row" style={{ display: "grid", gridTemplateColumns: "26px 1fr 130px 110px 50px 50px", gap: 4, padding: "7px 0", alignItems: "center", borderBottom: "1px solid var(--border)" }}>
+              <div key={c.id || i} className="compromisos-row" style={{ display: "grid", gridTemplateColumns: "26px 1fr 130px 110px 50px 50px", gap: 4, padding: "7px 0", alignItems: "center", borderBottom: `1px solid ${C.border}` }}>
                 <button onClick={toggleDone} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 14, padding: 0 }}>{c.status === "done" ? "✅" : "⬜"}</button>
                 <div style={{ display: "flex", gap: 3, alignItems: "center" }}>
-                  <input value={c.que} onChange={updateQue} placeholder="Compromiso..." style={{ flex: 1, background: "transparent", border: "none", fontSize: 12, fontFamily: "var(--sans)", color: c.status === "done" ? "var(--tx3)" : "var(--tx)", outline: "none", textDecoration: c.status === "done" ? "line-through" : "none" }} />
+                  <input value={c.que} onChange={updateQue} placeholder="Compromiso..." style={{ flex: 1, background: "transparent", border: "none", fontSize: 12, fontFamily: F.sans, color: c.status === "done" ? C.tx3 : C.tx, outline: "none", textDecoration: c.status === "done" ? "line-through" : "none" }} />
                   {deleteBtn}
                 </div>
                 <PersonSelect value={c.quien} onChange={updateQuien} />
-                <input type="date" value={c.cuando} onChange={updateCuando} style={{ background: "var(--bg2)", border: "1px solid var(--bg4)", borderRadius: "var(--r-sm)", padding: "3px 4px", fontSize: 10, color: "var(--tx)", outline: "none" }} />
+                <input type="date" value={c.cuando} onChange={updateCuando} style={{ background: C.bg2, border: `1px solid ${C.bg4}`, borderRadius: R.sm, padding: "3px 4px", fontSize: 10, color: C.tx, outline: "none" }} />
                 <div style={{ textAlign: "center" }}>
-                  <span style={{ fontFamily: "var(--mono)", fontSize: 11, fontWeight: 600, color: (c.pct || 0) >= 100 ? "var(--green)" : (c.pct || 0) >= 50 ? "var(--yellow)" : "var(--tx3)", cursor: "pointer" }} onClick={bumpPct}>{c.pct || 0}%</span>
+                  <span style={{ fontFamily: F.mono, fontSize: 11, fontWeight: 600, color: (c.pct || 0) >= 100 ? C.green : (c.pct || 0) >= 50 ? C.yellow : C.tx3, cursor: "pointer" }} onClick={bumpPct}>{c.pct || 0}%</span>
                 </div>
                 <div style={{ textAlign: "center" }}>
-                  {synced.includes(i) ? <span style={{ fontSize: 10, color: "var(--green)", fontWeight: 700 }}>✓</span>
-                    : <button onClick={() => syncToMonday(i)} disabled={!c.que || !c.quien || syncing === i || syncing === "all"} style={{ background: "var(--bg2)", color: "var(--blue)", border: "1px solid var(--bg4)", borderRadius: "var(--r-sm)", padding: "2px 6px", fontSize: 10, fontWeight: 600, cursor: "pointer", opacity: (!c.que?.trim() || !c.quien) ? 0.3 : 1 }}>{(syncing === i || (syncing === "all" && !synced.includes(i))) ? "..." : "→"}</button>}
+                  {synced.includes(i) ? <span style={{ fontSize: 10, color: C.green, fontWeight: 700 }}>✓</span>
+                    : <button onClick={() => syncToMonday(i)} disabled={!c.que || !c.quien || syncing === i || syncing === "all"} style={{ background: C.bg2, color: C.blue, border: `1px solid ${C.bg4}`, borderRadius: R.sm, padding: "2px 6px", fontSize: 10, fontWeight: 600, cursor: "pointer", opacity: (!c.que?.trim() || !c.quien) ? 0.3 : 1 }}>{(syncing === i || (syncing === "all" && !synced.includes(i))) ? "..." : "→"}</button>}
                 </div>
               </div>
             );
@@ -161,28 +162,28 @@ const TabCompromisos = React.memo(function TabCompromisos({ wd, setWd, save, ana
         </Card>}
 
       <Card style={{ marginTop: 12, marginBottom: 4 }}>
-        <div style={{ fontSize: 12, fontWeight: 600, color: "var(--tx3)", marginBottom: 6 }}>📝 Notas de cierre</div>
-        <textarea value={wd.notasCierre || ""} onChange={(e) => { const n = { ...wd, notasCierre: e.target.value }; setWd(n); save(n); }} placeholder="Temas offline, decisiones tomadas, seguimientos..." style={{ width: "100%", minHeight: 60, background: "var(--bg3)", border: "none", borderRadius: "var(--r-sm)", padding: 10, fontSize: 12, fontFamily: "var(--sans)", color: "var(--tx)", outline: "none", resize: "vertical" }} />
+        <div style={{ fontSize: 12, fontWeight: 600, color: C.tx3, marginBottom: 6 }}>📝 Notas de cierre</div>
+        <textarea value={wd.notasCierre || ""} onChange={(e) => { const n = { ...wd, notasCierre: e.target.value }; setWd(n); save(n); }} placeholder="Temas offline, decisiones tomadas, seguimientos..." style={{ width: "100%", minHeight: 60, background: C.bg3, border: "none", borderRadius: R.sm, padding: 10, fontSize: 12, fontFamily: F.sans, color: C.tx, outline: "none", resize: "vertical" }} />
       </Card>
 
       {!loadingPrev && openPrev.length > 0 && (
         <div style={{ marginTop: 16 }}>
           <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
-            📋 Compromisos Anteriores Abiertos <span style={{ fontFamily: "var(--mono)", fontSize: 12, color: "var(--red)", fontWeight: 700 }}>{openPrev.length}</span>
+            📋 Compromisos Anteriores Abiertos <span style={{ fontFamily: F.mono, fontSize: 12, color: C.red, fontWeight: 700 }}>{openPrev.length}</span>
           </div>
           <Card>
             {openPrev.map((c, i) => (
-              <div key={i} style={{ display: "flex", gap: 8, alignItems: "center", padding: "8px 0", borderBottom: i < openPrev.length - 1 ? "1px solid var(--bg3)" : "none" }}>
+              <div key={i} style={{ display: "flex", gap: 8, alignItems: "center", padding: "8px 0", borderBottom: i < openPrev.length - 1 ? `1px solid ${C.bg3}` : "none" }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, color: "var(--tx)", fontWeight: 500 }}>{c.que}</div>
-                  <div style={{ fontSize: 10, color: "var(--tx3)", marginTop: 2, display: "flex", gap: 8 }}>
+                  <div style={{ fontSize: 13, color: C.tx, fontWeight: 500 }}>{c.que}</div>
+                  <div style={{ fontSize: 10, color: C.tx3, marginTop: 2, display: "flex", gap: 8 }}>
                     <span>👤 {shortName(c.quien)}</span>
                     <span>📅 {dateFmt(c.weekDate)}</span>
                     {c.cuando && <span>⏰ {dateFmt(c.cuando)}</span>}
                   </div>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
-                  <span style={{ fontFamily: "var(--mono)", fontSize: 14, fontWeight: 700, color: pctColor(c.pct || 0), minWidth: 36, textAlign: "right" }}>{c.pct || 0}%</span>
+                  <span style={{ fontFamily: F.mono, fontSize: 14, fontWeight: 700, color: pctColor(c.pct || 0), minWidth: 36, textAlign: "right" }}>{c.pct || 0}%</span>
                   <input type="range" min="0" max="100" step="10" value={c.pct || 0} onChange={(e) => updatePrevPct(c.weekKey, c.que, parseInt(e.target.value))} style={{ width: 80, accentColor: pctColor(c.pct || 0) }} />
                 </div>
               </div>
@@ -193,16 +194,16 @@ const TabCompromisos = React.memo(function TabCompromisos({ wd, setWd, save, ana
 
       {!loadingPrev && donePrev.length > 0 && (
         <div style={{ marginTop: 12 }}>
-          <div style={{ fontSize: 12, fontWeight: 600, color: "var(--tx3)", marginBottom: 6, display: "flex", alignItems: "center", gap: 6 }}>
-            ✅ Completados anteriores <span style={{ fontFamily: "var(--mono)", fontSize: 11, color: "var(--green)" }}>{donePrev.length}</span>
+          <div style={{ fontSize: 12, fontWeight: 600, color: C.tx3, marginBottom: 6, display: "flex", alignItems: "center", gap: 6 }}>
+            ✅ Completados anteriores <span style={{ fontFamily: F.mono, fontSize: 11, color: C.green }}>{donePrev.length}</span>
           </div>
           <div style={{ maxHeight: 150, overflowY: "auto" }}>
             {donePrev.map((c, i) => (
               <div key={i} style={{ display: "flex", gap: 6, alignItems: "center", padding: "3px 0", fontSize: 12, opacity: 0.5 }}>
                 <span>✅</span>
-                <span style={{ flex: 1, color: "var(--tx3)", textDecoration: "line-through" }}>{c.que}</span>
-                <span style={{ fontSize: 10, color: "var(--tx3)" }}>{shortName(c.quien)}</span>
-                <span style={{ fontSize: 10, color: "var(--tx3)" }}>{dateFmt(c.weekDate)}</span>
+                <span style={{ flex: 1, color: C.tx3, textDecoration: "line-through" }}>{c.que}</span>
+                <span style={{ fontSize: 10, color: C.tx3 }}>{shortName(c.quien)}</span>
+                <span style={{ fontSize: 10, color: C.tx3 }}>{dateFmt(c.weekDate)}</span>
               </div>
             ))}
           </div>
