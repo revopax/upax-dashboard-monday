@@ -116,6 +116,7 @@ const TabHome = React.memo(function TabHome({ analysis: an, items, elapsed, onSt
   const [cargaSquad, setCargaSquad] = useState("all");
   const [showAllCarga, setShowAllCarga] = useState(false);
   const [mqlWeekIdx, setMqlWeekIdx] = useState(-1); // -1 = semana actual
+  const [expandedMonth, setExpandedMonth] = useState(null);
   const [expandedWeek, setExpandedWeek] = useState(null);
   // On Mondays (weekly meeting day), default to showing last week's data
   const [gddWeekView, setGddWeekView] = useState("current");
@@ -505,13 +506,13 @@ const TabHome = React.memo(function TabHome({ analysis: an, items, elapsed, onSt
                 <tbody>
                   {monthKeys.map((mKey, mi) => {
                     const weeks = byMonth[mKey];
-                    const isMonthExpanded = mi === 0 || expandedWeek === "month-" + mKey;
+                    const isMonthExpanded = mi === 0 || expandedMonth === mKey;
                     const mTotals = calcTotals(weeks);
 
                     return (
                       <React.Fragment key={mKey}>
                         <tr
-                          onClick={() => setExpandedWeek(isMonthExpanded && mi !== 0 ? null : "month-" + mKey)}
+                          onClick={() => { setExpandedMonth(isMonthExpanded && mi !== 0 ? null : mKey); setExpandedWeek(null); }}
                           style={{ cursor: "pointer", background: "var(--bg2)" }}
                           onMouseEnter={e => e.currentTarget.style.background = "var(--bg3)"}
                           onMouseLeave={e => e.currentTarget.style.background = "var(--bg2)"}
@@ -536,7 +537,7 @@ const TabHome = React.memo(function TabHome({ analysis: an, items, elapsed, onSt
                           return (
                             <React.Fragment key={weekKey}>
                               <tr
-                                onClick={() => hasPorOrigen && setExpandedWeek(isWeekExpanded ? "month-" + mKey : weekKey)}
+                                onClick={() => hasPorOrigen && setExpandedWeek(isWeekExpanded ? null : weekKey)}
                                 style={{
                                   background: isFirst ? "rgba(0,122,255,.06)" : "transparent",
                                   cursor: hasPorOrigen ? "pointer" : "default",
