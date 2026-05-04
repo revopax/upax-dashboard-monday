@@ -14,6 +14,14 @@ const TabCompromisos = React.memo(function TabCompromisos({ wd, setWd, save, ana
   const [prevComps, setPrevComps] = useState([]);
   const [loadingPrev, setLoadingPrev] = useState(true);
   const [confirmDelIdx, setConfirmDelIdx] = useState(null);
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 640px)");
+    setIsMobile(mq.matches);
+    const handler = (e) => setIsMobile(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
   const setComps = (c) => { const n = { ...wd, compromisos: c }; setWd(n); save(n); };
 
   useEffect(() => {
@@ -101,27 +109,55 @@ const TabCompromisos = React.memo(function TabCompromisos({ wd, setWd, save, ana
           <button onClick={() => setComps([...comps, { id: Date.now(), que: "", quien: "", cuando: "", status: "pending" }])} style={{ background: "var(--tx)", color: "var(--bg)", border: "none", borderRadius: "var(--r-sm)", padding: "8px 20px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>+ Agregar compromiso</button>
         </Card>
         : <Card>
-          <div className="mobile-hide" style={{ display: "grid", gridTemplateColumns: "26px 1fr 130px 110px 50px 50px", gap: 4, padding: "4px 0 6px", fontSize: 10, fontWeight: 700, color: "var(--tx3)", textTransform: "uppercase", letterSpacing: 1, borderBottom: "1px solid var(--border)" }}><span /><span>Qué</span><span>Quién</span><span>Cuándo</span><span>%</span><span>Mon</span></div>
-          {comps.map((c, i) => (
-            <div key={c.id || i} className="compromisos-row" style={{ display: "grid", gridTemplateColumns: "26px 1fr 130px 110px 50px 50px", gap: 4, padding: "7px 0", alignItems: "center", borderBottom: "1px solid var(--border)" }}>
-              <button onClick={() => { const ns = c.status === "done" ? "pending" : "done"; setComps(comps.map((x, j) => j === i ? { ...x, status: ns, pct: ns === "done" ? 100 : (x.pct || 0) } : x)); }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 14, padding: 0 }}>{c.status === "done" ? "✅" : "⬜"}</button>
-              <div style={{ display: "flex", gap: 3, alignItems: "center" }}>
-                <input value={c.que} onChange={(e) => setComps(comps.map((x, j) => j === i ? { ...x, que: e.target.value } : x))} placeholder="Compromiso..." style={{ flex: 1, background: "transparent", border: "none", fontSize: 12, fontFamily: "var(--sans)", color: c.status === "done" ? "var(--tx3)" : "var(--tx)", outline: "none", textDecoration: c.status === "done" ? "line-through" : "none" }} />
-                {confirmDelIdx === i
-                  ? <><button onClick={() => { setComps(comps.filter((_, j) => j !== i)); setConfirmDelIdx(null); }} style={{ background: "var(--red)", color: "#fff", border: "none", borderRadius: 4, padding: "1px 6px", fontSize: 10, fontWeight: 600, cursor: "pointer" }}>Eliminar</button><button onClick={() => setConfirmDelIdx(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--tx3)", fontSize: 10 }}>No</button></>
-                  : <button onClick={() => setConfirmDelIdx(i)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--border)", fontSize: 11 }}>✕</button>}
+          {!isMobile && <div style={{ display: "grid", gridTemplateColumns: "26px 1fr 130px 110px 50px 50px", gap: 4, padding: "4px 0 6px", fontSize: 10, fontWeight: 700, color: "var(--tx3)", textTransform: "uppercase", letterSpacing: 1, borderBottom: "1px solid var(--border)" }}><span /><span>Qué</span><span>Quién</span><span>Cuándo</span><span>%</span><span>Mon</span></div>}
+          {comps.map((c, i) => {
+            const toggleDone = () => { const ns = c.status === "done" ? "pending" : "done"; setComps(comps.map((x, j) => j === i ? { ...x, status: ns, pct: ns === "done" ? 100 : (x.pct || 0) } : x)); };
+            const updateQue = (e) => setComps(comps.map((x, j) => j === i ? { ...x, que: e.target.value } : x));
+            const updateQuien = (e) => setComps(comps.map((x, j) => j === i ? { ...x, quien: e.target.value } : x));
+            const updateCuando = (e) => setComps(comps.map((x, j) => j === i ? { ...x, cuando: e.target.value } : x));
+            const bumpPct = () => { const next = Math.min(100, (c.pct || 0) + 25); setComps(comps.map((x, j) => j === i ? { ...x, pct: next, status: next >= 100 ? "done" : x.status } : x)); };
+            const deleteBtn = confirmDelIdx === i
+              ? <><button onClick={() => { setComps(comps.filter((_, j) => j !== i)); setConfirmDelIdx(null); }} style={{ background: "var(--red)", color: "#fff", border: "none", borderRadius: 4, padding: "1px 6px", fontSize: 10, fontWeight: 600, cursor: "pointer" }}>Eliminar</button><button onClick={() => setConfirmDelIdx(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--tx3)", fontSize: 10 }}>No</button></>
+              : <button onClick={() => setConfirmDelIdx(i)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--border)", fontSize: 11 }}>✕</button>;
+            const syncBtn = synced.includes(i)
+              ? <span style={{ fontSize: 10, color: "var(--green)", fontWeight: 700 }}>✓ Mon</span>
+              : <button onClick={() => syncToMonday(i)} disabled={!c.que || !c.quien || syncing === i || syncing === "all"} style={{ background: "var(--bg2)", color: "var(--blue)", border: "1px solid var(--bg4)", borderRadius: "var(--r-sm)", padding: "2px 6px", fontSize: 10, fontWeight: 600, cursor: "pointer", opacity: (!c.que?.trim() || !c.quien) ? 0.3 : 1 }}>{(syncing === i || (syncing === "all" && !synced.includes(i))) ? "..." : "→ Mon"}</button>;
+
+            if (isMobile) return (
+              <div key={c.id || i} style={{ padding: "10px 0", borderBottom: "1px solid var(--border)" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                  <button onClick={toggleDone} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 14, padding: 0 }}>{c.status === "done" ? "✅" : "⬜"}</button>
+                  <input value={c.que} onChange={updateQue} placeholder="Compromiso..." style={{ flex: 1, background: "transparent", border: "none", fontSize: 13, fontFamily: "var(--sans)", color: c.status === "done" ? "var(--tx3)" : "var(--tx)", outline: "none", textDecoration: c.status === "done" ? "line-through" : "none" }} />
+                  {deleteBtn}
+                </div>
+                <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", paddingLeft: 30 }}>
+                  <PersonSelect value={c.quien} onChange={updateQuien} style={{ flex: 1, minWidth: 100 }} />
+                  <input type="date" value={c.cuando} onChange={updateCuando} style={{ background: "var(--bg2)", border: "1px solid var(--bg4)", borderRadius: "var(--r-sm)", padding: "3px 4px", fontSize: 10, color: "var(--tx)", outline: "none" }} />
+                  <span style={{ fontFamily: "var(--mono)", fontSize: 11, fontWeight: 600, color: (c.pct || 0) >= 100 ? "var(--green)" : (c.pct || 0) >= 50 ? "var(--yellow)" : "var(--tx3)", cursor: "pointer" }} onClick={bumpPct}>{c.pct || 0}%</span>
+                  {syncBtn}
+                </div>
               </div>
-              <PersonSelect value={c.quien} onChange={(e) => setComps(comps.map((x, j) => j === i ? { ...x, quien: e.target.value } : x))} />
-              <input type="date" value={c.cuando} onChange={(e) => setComps(comps.map((x, j) => j === i ? { ...x, cuando: e.target.value } : x))} style={{ background: "var(--bg2)", border: "1px solid var(--bg4)", borderRadius: "var(--r-sm)", padding: "3px 4px", fontSize: 10, color: "var(--tx)", outline: "none" }} />
-              <div style={{ textAlign: "center" }}>
-                <span style={{ fontFamily: "var(--mono)", fontSize: 11, fontWeight: 600, color: (c.pct || 0) >= 100 ? "var(--green)" : (c.pct || 0) >= 50 ? "var(--yellow)" : "var(--tx3)", cursor: "pointer" }} onClick={() => { const next = Math.min(100, (c.pct || 0) + 25); setComps(comps.map((x, j) => j === i ? { ...x, pct: next, status: next >= 100 ? "done" : x.status } : x)); }}>{c.pct || 0}%</span>
+            );
+
+            return (
+              <div key={c.id || i} className="compromisos-row" style={{ display: "grid", gridTemplateColumns: "26px 1fr 130px 110px 50px 50px", gap: 4, padding: "7px 0", alignItems: "center", borderBottom: "1px solid var(--border)" }}>
+                <button onClick={toggleDone} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 14, padding: 0 }}>{c.status === "done" ? "✅" : "⬜"}</button>
+                <div style={{ display: "flex", gap: 3, alignItems: "center" }}>
+                  <input value={c.que} onChange={updateQue} placeholder="Compromiso..." style={{ flex: 1, background: "transparent", border: "none", fontSize: 12, fontFamily: "var(--sans)", color: c.status === "done" ? "var(--tx3)" : "var(--tx)", outline: "none", textDecoration: c.status === "done" ? "line-through" : "none" }} />
+                  {deleteBtn}
+                </div>
+                <PersonSelect value={c.quien} onChange={updateQuien} />
+                <input type="date" value={c.cuando} onChange={updateCuando} style={{ background: "var(--bg2)", border: "1px solid var(--bg4)", borderRadius: "var(--r-sm)", padding: "3px 4px", fontSize: 10, color: "var(--tx)", outline: "none" }} />
+                <div style={{ textAlign: "center" }}>
+                  <span style={{ fontFamily: "var(--mono)", fontSize: 11, fontWeight: 600, color: (c.pct || 0) >= 100 ? "var(--green)" : (c.pct || 0) >= 50 ? "var(--yellow)" : "var(--tx3)", cursor: "pointer" }} onClick={bumpPct}>{c.pct || 0}%</span>
+                </div>
+                <div style={{ textAlign: "center" }}>
+                  {synced.includes(i) ? <span style={{ fontSize: 10, color: "var(--green)", fontWeight: 700 }}>✓</span>
+                    : <button onClick={() => syncToMonday(i)} disabled={!c.que || !c.quien || syncing === i || syncing === "all"} style={{ background: "var(--bg2)", color: "var(--blue)", border: "1px solid var(--bg4)", borderRadius: "var(--r-sm)", padding: "2px 6px", fontSize: 10, fontWeight: 600, cursor: "pointer", opacity: (!c.que?.trim() || !c.quien) ? 0.3 : 1 }}>{(syncing === i || (syncing === "all" && !synced.includes(i))) ? "..." : "→"}</button>}
+                </div>
               </div>
-              <div style={{ textAlign: "center" }}>
-                {synced.includes(i) ? <span style={{ fontSize: 10, color: "var(--green)", fontWeight: 700 }}>✓</span>
-                  : <button onClick={() => syncToMonday(i)} disabled={!c.que || !c.quien || syncing === i || syncing === "all"} style={{ background: "var(--bg2)", color: "var(--blue)", border: "1px solid var(--bg4)", borderRadius: "var(--r-sm)", padding: "2px 6px", fontSize: 10, fontWeight: 600, cursor: "pointer", opacity: (!c.que?.trim() || !c.quien) ? 0.3 : 1 }}>{(syncing === i || (syncing === "all" && !synced.includes(i))) ? "..." : "→"}</button>}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </Card>}
 
       <Card style={{ marginTop: 12, marginBottom: 4 }}>
