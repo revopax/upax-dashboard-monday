@@ -64,12 +64,16 @@ const TabCompromisos = React.memo(function TabCompromisos({ wd, setWd, save, ana
   }
 
   async function syncAllToMonday() {
-    for (let i = 0; i < comps.length; i++) {
-      if (synced.includes(i) || !comps[i].que?.trim() || !comps[i].quien) continue;
-      setSyncing(i);
-      const ok = await createMondayItem(`WEEKLY ${TODAY_STR} | ${comps[i].que}`, comps[i].cuando || null, comps[i].quien || null);
-      if (ok) { const n = { ...wd, synced: [...(wd.synced || []), i] }; setWd(n); save(n); }
-    }
+    const pending = comps.map((c, i) => ({ c, i })).filter(({ c, i }) => !synced.includes(i) && c.que?.trim() && c.quien);
+    if (!pending.length) return;
+    setSyncing("all");
+    const results = await Promise.allSettled(
+      pending.map(({ c, i }) => createMondayItem(`WEEKLY ${TODAY_STR} | ${c.que}`, c.cuando || null, c.quien || null).then(ok => ({ ok, i })))
+    );
+    const newSynced = [...(wd.synced || [])];
+    results.forEach(r => { if (r.status === "fulfilled" && r.value.ok) newSynced.push(r.value.i); });
+    const n = { ...wd, synced: newSynced };
+    setWd(n); save(n);
     setSyncing(null);
   }
 
@@ -83,7 +87,7 @@ const TabCompromisos = React.memo(function TabCompromisos({ wd, setWd, save, ana
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
         <h2 style={{ fontSize: 16, fontWeight: 700 }}>Compromisos</h2>
         <div style={{ display: "flex", gap: 4 }}>
-          {unsyncedCount > 0 && <button onClick={syncAllToMonday} disabled={syncing !== null} style={{ background: "var(--blue)", color: "#fff", border: "none", borderRadius: "var(--r-sm)", padding: "5px 12px", fontSize: 11, fontWeight: 700, cursor: syncing !== null ? "default" : "pointer", fontFamily: "var(--mono)", textTransform: "uppercase", opacity: syncing !== null ? 0.5 : 1 }}>{syncing !== null ? `SYNC ${syncing + 1}/${comps.length}...` : `↑ SYNC ${unsyncedCount} → MONDAY`}</button>}
+          {unsyncedCount > 0 && <button onClick={syncAllToMonday} disabled={syncing !== null} style={{ background: "var(--blue)", color: "#fff", border: "none", borderRadius: "var(--r-sm)", padding: "5px 12px", fontSize: 11, fontWeight: 700, cursor: syncing !== null ? "default" : "pointer", fontFamily: "var(--mono)", textTransform: "uppercase", opacity: syncing !== null ? 0.5 : 1 }}>{syncing === "all" ? `SYNCING ${unsyncedCount}...` : syncing !== null ? "SYNCING..." : `↑ SYNC ${unsyncedCount} → MONDAY`}</button>}
           <button onClick={() => onCopy(generateMinuta(wd, analysis, gddData))} style={{ background: "var(--bg2)", color: "var(--tx2)", border: "1px solid var(--bg4)", borderRadius: "var(--r-sm)", padding: "5px 12px", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>📤 Minuta</button>
           <button onClick={() => setComps([...comps, { id: Date.now(), que: "", quien: "", cuando: "", status: "pending" }])} style={{ background: "var(--tx)", color: "var(--bg)", border: "none", borderRadius: "var(--r-sm)", padding: "5px 14px", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "var(--mono)", textTransform: "uppercase" }}>+ AGREGAR</button>
         </div>
@@ -114,7 +118,7 @@ const TabCompromisos = React.memo(function TabCompromisos({ wd, setWd, save, ana
               </div>
               <div style={{ textAlign: "center" }}>
                 {synced.includes(i) ? <span style={{ fontSize: 10, color: "var(--green)", fontWeight: 700 }}>✓</span>
-                  : <button onClick={() => syncToMonday(i)} disabled={!c.que || !c.quien || syncing === i} style={{ background: "var(--bg2)", color: "var(--blue)", border: "1px solid var(--bg4)", borderRadius: "var(--r-sm)", padding: "2px 6px", fontSize: 10, fontWeight: 600, cursor: "pointer", opacity: (!c.que?.trim() || !c.quien) ? 0.3 : 1 }}>{syncing === i ? "..." : "→"}</button>}
+                  : <button onClick={() => syncToMonday(i)} disabled={!c.que || !c.quien || syncing === i || syncing === "all"} style={{ background: "var(--bg2)", color: "var(--blue)", border: "1px solid var(--bg4)", borderRadius: "var(--r-sm)", padding: "2px 6px", fontSize: 10, fontWeight: 600, cursor: "pointer", opacity: (!c.que?.trim() || !c.quien) ? 0.3 : 1 }}>{(syncing === i || (syncing === "all" && !synced.includes(i))) ? "..." : "→"}</button>}
               </div>
             </div>
           ))}
