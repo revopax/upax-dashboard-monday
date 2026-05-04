@@ -18,12 +18,13 @@ import { fetchAllItems, sendToSlack, authHeaders } from "./lib/api";
 import { generateMinuta } from "./lib/minuta";
 import { CSS } from "./lib/css";
 import { useGDDData } from "./hooks/useGDDData";
+import { C, R, F } from "./lib/tokens";
 import { Card, CopyModal } from "./components/ui";
 import { TimerZone } from "./components/TimerZone";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 
 // Code-split: each tab loads on demand
-const TabSkeleton = () => <div style={{ textAlign: "center", padding: 40, color: "var(--tx3)", fontSize: 12 }}>Cargando...</div>;
+const TabSkeleton = () => <div style={{ textAlign: "center", padding: 40, color: C.tx3, fontSize: 12 }}>Cargando...</div>;
 const TabHome = dynamic(() => import("./components/TabHome").then(m => ({ default: m.TabHome })), { loading: TabSkeleton, ssr: false });
 const TabAgenda = dynamic(() => import("./components/TabAgenda").then(m => ({ default: m.TabAgenda })), { loading: TabSkeleton, ssr: false });
 const TabPanorama = dynamic(() => import("./components/TabPanorama").then(m => ({ default: m.TabPanorama })), { loading: TabSkeleton, ssr: false });
@@ -394,15 +395,15 @@ export default function App() {
 
   // ── Loading screen ──────────────────────────────────────────
   if (loading) return (
-    <div style={{ fontFamily: "var(--sans)", background: "var(--bg)", minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: "var(--tx3)" }}>
+    <div style={{ fontFamily: F.sans, background: C.bg, minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: C.tx3 }}>
       <style>{CSS}</style>
       <div style={{ fontSize: 32, marginBottom: 16, animation: "pulse 1.5s ease infinite" }}>⚡</div>
       <div style={{ fontSize: 11, fontWeight: 500, letterSpacing: "0.2em", textTransform: "uppercase" }}>{loadingMsg}</div>
       {loadingElapsed >= 15 && (
-        <div style={{ fontSize: 11, color: "var(--yellow)", marginTop: 12, textAlign: "center", maxWidth: 280 }}>Monday está lento. Puedes esperar o trabajar offline.</div>
+        <div style={{ fontSize: 11, color: C.yellow, marginTop: 12, textAlign: "center", maxWidth: 280 }}>Monday está lento. Puedes esperar o trabajar offline.</div>
       )}
       {loadingElapsed >= 5 && loadingElapsed < 15 && (
-        <div style={{ fontSize: 11, color: "var(--tx3)", marginTop: 12 }}>Esto está tardando más de lo normal...</div>
+        <div style={{ fontSize: 11, color: C.tx3, marginTop: 12 }}>Esto está tardando más de lo normal...</div>
       )}
     </div>
   );
@@ -411,18 +412,18 @@ export default function App() {
   const an = analysis || emptyAnalysis;
 
   const tabs = [
-    { id: "home",        icon: "🏠", label: "Home",         color: "var(--blue)" },
-    { id: "agenda",      icon: "⏱",  label: "Agenda",       color: "var(--purple)" },
-    { id: "panorama",    icon: "📊", label: "Panorama",     color: "var(--cyan)" },
-    { id: "focos",       icon: "🎯", label: "Focos",        color: "var(--yellow)" },
-    { id: "compromisos", icon: "📝", label: "Compromisos",  color: "var(--green)" },
-    { id: "minutas",     icon: "📋", label: "Minutas",      color: "var(--purple)" },
+    { id: "home",        icon: "🏠", label: "Home",         color: C.blue },
+    { id: "agenda",      icon: "⏱",  label: "Agenda",       color: C.purple },
+    { id: "panorama",    icon: "📊", label: "Panorama",     color: C.cyan },
+    { id: "focos",       icon: "🎯", label: "Focos",        color: C.yellow },
+    { id: "compromisos", icon: "📝", label: "Compromisos",  color: C.green },
+    { id: "minutas",     icon: "📋", label: "Minutas",      color: C.purple },
   ];
 
   return (
-    <div suppressHydrationWarning className={presenterMode ? "presenter-mode" : ""} style={{ fontFamily: "var(--sans)", background: "var(--bg)", minHeight: "100vh", color: "var(--tx)" }}>
+    <div suppressHydrationWarning className={presenterMode ? "presenter-mode" : ""} style={{ fontFamily: F.sans, background: C.bg, minHeight: "100vh", color: C.tx }}>
       <style>{CSS}</style>
-      <a href="#main-content" className="sr-only" style={{ position: "absolute", top: -40, left: 0, background: "var(--blue)", color: "#fff", padding: "8px 16px", zIndex: 9999, borderRadius: "0 0 8px 0", fontWeight: 600, fontSize: 13, textDecoration: "none" }} onFocus={e => e.currentTarget.style.top = "0"} onBlur={e => e.currentTarget.style.top = "-40px"}>Saltar al contenido</a>
+      <a href="#main-content" className="sr-only" style={{ position: "absolute", top: -40, left: 0, background: C.blue, color: "#fff", padding: "8px 16px", zIndex: 9999, borderRadius: "0 0 8px 0", fontWeight: 600, fontSize: 13, textDecoration: "none" }} onFocus={e => e.currentTarget.style.top = "0"} onBlur={e => e.currentTarget.style.top = "-40px"}>Saltar al contenido</a>
 
       {(running || elapsed > 0) && !finished && (
         <TimerZone
@@ -441,13 +442,13 @@ export default function App() {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20, flexWrap: "wrap", gap: 10 }}>
           <div>
             <h1 style={{ fontSize: "clamp(18px, 4.5vw, 22px)", fontWeight: 700, margin: 0, letterSpacing: "-0.04em", lineHeight: 1.2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-              ⚡ Weekly <span style={{ color: "var(--tx3)", fontWeight: 500 }}>Mkt Corp</span>
+              ⚡ Weekly <span style={{ color: C.tx3, fontWeight: 500 }}>Mkt Corp</span>
             </h1>
-            <div style={{ fontSize: 11, color: "var(--tx3)", marginTop: 6, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-              <span style={{ fontFamily: "var(--mono)", fontSize: 10 }}>{items.length} items</span>
-              {lastUpdate && <span style={{ fontSize: 11, color: "var(--tx3)" }}>· sync {new Date(lastUpdate).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })}</span>}
-              {err && <span style={{ fontSize: 10, color: "var(--yellow)" }}>· {err}</span>}
-              <button onClick={refresh} disabled={refreshing} style={{ background: "var(--bg2)", color: refreshing ? "var(--yellow)" : "var(--tx3)", border: "1px solid var(--bg4)", borderRadius: "var(--r-sm)", padding: "3px 10px", fontSize: 10, fontWeight: 500, cursor: refreshing ? "default" : "pointer", display: "flex", alignItems: "center", gap: 4 }}>
+            <div style={{ fontSize: 11, color: C.tx3, marginTop: 6, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              <span style={{ fontFamily: F.mono, fontSize: 10 }}>{items.length} items</span>
+              {lastUpdate && <span style={{ fontSize: 11, color: C.tx3 }}>· sync {new Date(lastUpdate).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })}</span>}
+              {err && <span style={{ fontSize: 10, color: C.yellow }}>· {err}</span>}
+              <button onClick={refresh} disabled={refreshing} style={{ background: C.bg2, color: refreshing ? C.yellow : C.tx3, border: `1px solid ${C.bg4}`, borderRadius: R.sm, padding: "3px 10px", fontSize: 10, fontWeight: 500, cursor: refreshing ? "default" : "pointer", display: "flex", alignItems: "center", gap: 4 }}>
                 <span style={{ display: "inline-block", animation: refreshing ? "spin 1s linear infinite" : "none" }}>↻</span>
                 <span>{refreshing ? "Sincronizando..." : "Sync"}</span>
               </button>
@@ -458,26 +459,26 @@ export default function App() {
                   const data = await resp.json();
                   setErr(resp.ok ? `Monday OK -- ${data.total || 0} items` : `Error: ${data.error || resp.status}`);
                 } catch(e) { setErr("Error: " + e.message); }
-              }} title="Verificar conexion con Monday.com" style={{ background: "var(--bg2)", color: "var(--tx3)", border: "1px solid var(--bg4)", borderRadius: "var(--r-sm)", padding: "3px 10px", fontSize: 10, fontWeight: 500, cursor: "pointer" }}>🔍</button>
+              }} title="Verificar conexion con Monday.com" style={{ background: C.bg2, color: C.tx3, border: `1px solid ${C.bg4}`, borderRadius: R.sm, padding: "3px 10px", fontSize: 10, fontWeight: 500, cursor: "pointer" }}>🔍</button>
               <button onClick={() => {
                 if (!document.fullscreenElement) { document.documentElement.requestFullscreen().catch(() => {}); setPresenterMode(true); }
                 else { document.exitFullscreen().catch(() => {}); setPresenterMode(false); }
-              }} style={{ background: presenterMode ? "var(--tx)" : "var(--bg2)", color: presenterMode ? "#fff" : "var(--tx3)", border: presenterMode ? "none" : "1px solid var(--bg4)", borderRadius: "var(--r-sm)", padding: "3px 10px", fontSize: 10, fontWeight: 500, cursor: "pointer" }} title="Pantalla completa">{presenterMode ? "📺 ON" : "📺"}</button>
+              }} style={{ background: presenterMode ? C.tx : C.bg2, color: presenterMode ? "#fff" : C.tx3, border: presenterMode ? "none" : `1px solid ${C.bg4}`, borderRadius: R.sm, padding: "3px 10px", fontSize: 10, fontWeight: 500, cursor: "pointer" }} title="Pantalla completa">{presenterMode ? "📺 ON" : "📺"}</button>
             </div>
           </div>
           <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
             {[
-              { l: "BKL", tooltip: "Backlog", v: an.byPhase["⏳Backlog"] || 0, c: "var(--tx3)", bg: "transparent", border: "var(--bg4)", ph: "⏳Backlog", its: items.filter(it => it.column_values?.color_mkz09na === "⏳Backlog") },
-              { l: "SPR", tooltip: "Sprint", v: an.byPhase["🚧 Sprint"] || 0, c: "var(--yellow)", bg: "rgba(245,158,11,.06)", border: "rgba(245,158,11,.25)", ph: "🚧 Sprint", its: items.filter(it => it.column_values?.color_mkz09na === "🚧 Sprint") },
-              { l: "REV", tooltip: "Review", v: an.byPhase["👀 Review"] || 0, c: "var(--cyan)", bg: "rgba(90,200,250,.06)", border: "rgba(90,200,250,.25)", ph: "👀 Review", its: items.filter(it => it.column_values?.color_mkz09na === "👀 Review") },
-              { l: "DET", tooltip: "Detenidos", v: an.byPhase["🚫 Detenido"] || 0, c: "var(--orange)", bg: "rgba(255,149,0,.08)", border: "rgba(255,149,0,.3)", ph: "🚫 Detenido", its: items.filter(it => it.column_values?.color_mkz09na === "🚫 Detenido") },
-              { l: "VEN", tooltip: "Vencidos", v: (an.overdue || []).length, c: "var(--red)", bg: "rgba(255,59,48,.08)", border: "rgba(255,59,48,.3)", ph: "⏰ Vencidos", its: an.overdue || [] },
+              { l: "BKL", tooltip: "Backlog", v: an.byPhase["⏳Backlog"] || 0, c: C.tx3, bg: "transparent", border: C.bg4, ph: "⏳Backlog", its: items.filter(it => it.column_values?.color_mkz09na === "⏳Backlog") },
+              { l: "SPR", tooltip: "Sprint", v: an.byPhase["🚧 Sprint"] || 0, c: C.yellow, bg: "rgba(245,158,11,.06)", border: "rgba(245,158,11,.25)", ph: "🚧 Sprint", its: items.filter(it => it.column_values?.color_mkz09na === "🚧 Sprint") },
+              { l: "REV", tooltip: "Review", v: an.byPhase["👀 Review"] || 0, c: C.cyan, bg: "rgba(90,200,250,.06)", border: "rgba(90,200,250,.25)", ph: "👀 Review", its: items.filter(it => it.column_values?.color_mkz09na === "👀 Review") },
+              { l: "DET", tooltip: "Detenidos", v: an.byPhase["🚫 Detenido"] || 0, c: C.orange, bg: "rgba(255,149,0,.08)", border: "rgba(255,149,0,.3)", ph: "🚫 Detenido", its: items.filter(it => it.column_values?.color_mkz09na === "🚫 Detenido") },
+              { l: "VEN", tooltip: "Vencidos", v: (an.overdue || []).length, c: C.red, bg: "rgba(255,59,48,.08)", border: "rgba(255,59,48,.3)", ph: "⏰ Vencidos", its: an.overdue || [] },
             ].map((s) => (
-              <div key={s.l} onClick={() => setPhaseModal({ phase: s.ph, items: s.its })} title={s.tooltip} style={{ background: s.bg || "var(--bg)", border: `1px solid ${s.border || "var(--bg4)"}`, borderRadius: "var(--r-sm)", padding: "5px 8px", textAlign: "center", minWidth: 40, cursor: "pointer", transition: "all .15s" }}
-                onMouseEnter={e => e.currentTarget.style.background = "var(--bg3)"}
-                onMouseLeave={e => e.currentTarget.style.background = s.bg || "var(--bg)"}>
-                <div style={{ fontFamily: "var(--mono)", fontSize: 16, fontWeight: 700, color: s.c, letterSpacing: "-0.04em" }}>{s.v}</div>
-                <div style={{ fontSize: 8, color: "var(--tx3)", fontWeight: 600, letterSpacing: "0.1em" }}>{s.l}</div>
+              <div key={s.l} onClick={() => setPhaseModal({ phase: s.ph, items: s.its })} title={s.tooltip} style={{ background: s.bg || C.bg, border: `1px solid ${s.border || C.bg4}`, borderRadius: R.sm, padding: "5px 8px", textAlign: "center", minWidth: 40, cursor: "pointer", transition: "all .15s" }}
+                onMouseEnter={e => e.currentTarget.style.background = C.bg3}
+                onMouseLeave={e => e.currentTarget.style.background = s.bg || C.bg}>
+                <div style={{ fontFamily: F.mono, fontSize: 16, fontWeight: 700, color: s.c, letterSpacing: "-0.04em" }}>{s.v}</div>
+                <div style={{ fontSize: 8, color: C.tx3, fontWeight: 600, letterSpacing: "0.1em" }}>{s.l}</div>
               </div>
             ))}
           </div>
@@ -485,24 +486,24 @@ export default function App() {
 
         {/* Finished panel */}
         {finished && (
-          <Card style={{ marginBottom: 16, borderLeft: "3px solid var(--green)" }}>
+          <Card style={{ marginBottom: 16, borderLeft: `3px solid ${C.green}` }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
               <div>
-                <div style={{ fontSize: 16, fontWeight: 700, color: "var(--green)", fontFamily: "var(--mono)" }}>WEEKLY TERMINADA</div>
-                <div style={{ fontSize: 12, color: "var(--tx3)", fontFamily: "var(--mono)", marginTop: 2 }}>{Math.floor(elapsed / 60)}:{String(elapsed % 60).padStart(2, "0")} min · {minutaSaved ? "Guardada" : "Sin guardar"}</div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: C.green, fontFamily: F.mono }}>WEEKLY TERMINADA</div>
+                <div style={{ fontSize: 12, color: C.tx3, fontFamily: F.mono, marginTop: 2 }}>{Math.floor(elapsed / 60)}:{String(elapsed % 60).padStart(2, "0")} min · {minutaSaved ? "Guardada" : "Sin guardar"}</div>
               </div>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                {!minutaSaved && <button onClick={async () => { await storeSet(STORE_KEY, { ...wd, minutaText: minutaDraft, gdd_snapshot: appGddData, analysis_snapshot: an }); setMinutaSaved(true); }} style={{ background: "var(--bg2)", color: "var(--tx2)", border: "1px solid var(--bg4)", padding: "8px 18px", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "var(--mono)", textTransform: "uppercase" }}>GUARDAR</button>}
-                <button onClick={async () => { await storeSet(STORE_KEY, { ...wd, minutaText: minutaDraft, gdd_snapshot: appGddData, analysis_snapshot: an }); setMinutaSaved(true); handleCopy(minutaDraft); }} style={{ background: "var(--tx)", color: "var(--bg)", border: "none", padding: "8px 24px", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "var(--mono)", textTransform: "uppercase" }}>{minutaSaved ? "COPIAR A SLACK" : "GUARDAR + COPIAR"}</button>
-                <button onClick={async () => { await storeSet(STORE_KEY, { ...wd, minutaText: minutaDraft, gdd_snapshot: appGddData, analysis_snapshot: an }); setMinutaSaved(true); setSlackStatus("sending"); const ok = await sendToSlack(minutaDraft); setSlackStatus(ok ? "ok" : "error"); if (!ok) handleCopy(minutaDraft); setTimeout(() => setSlackStatus(null), 4000); }} style={{ background: "linear-gradient(135deg,#4A154B,#611f69)", color: "#fff", border: "none", padding: "8px 20px", borderRadius: "var(--r-sm)", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "var(--mono)", textTransform: "uppercase" }}>ENVIAR A SLACK</button>
+                {!minutaSaved && <button onClick={async () => { await storeSet(STORE_KEY, { ...wd, minutaText: minutaDraft, gdd_snapshot: appGddData, analysis_snapshot: an }); setMinutaSaved(true); }} style={{ background: C.bg2, color: C.tx2, border: `1px solid ${C.bg4}`, padding: "8px 18px", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: F.mono, textTransform: "uppercase" }}>GUARDAR</button>}
+                <button onClick={async () => { await storeSet(STORE_KEY, { ...wd, minutaText: minutaDraft, gdd_snapshot: appGddData, analysis_snapshot: an }); setMinutaSaved(true); handleCopy(minutaDraft); }} style={{ background: C.tx, color: C.bg, border: "none", padding: "8px 24px", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: F.mono, textTransform: "uppercase" }}>{minutaSaved ? "COPIAR A SLACK" : "GUARDAR + COPIAR"}</button>
+                <button onClick={async () => { await storeSet(STORE_KEY, { ...wd, minutaText: minutaDraft, gdd_snapshot: appGddData, analysis_snapshot: an }); setMinutaSaved(true); setSlackStatus("sending"); const ok = await sendToSlack(minutaDraft); setSlackStatus(ok ? "ok" : "error"); if (!ok) handleCopy(minutaDraft); setTimeout(() => setSlackStatus(null), 4000); }} style={{ background: "linear-gradient(135deg,#4A154B,#611f69)", color: "#fff", border: "none", padding: "8px 20px", borderRadius: R.sm, fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: F.mono, textTransform: "uppercase" }}>ENVIAR A SLACK</button>
               </div>
             </div>
-            <textarea value={minutaDraft} onChange={(e) => { setMinutaDraft(e.target.value); setMinutaSaved(false); }} style={{ width: "100%", minHeight: 280, background: "var(--bg2)", color: "var(--tx)", border: "1px solid var(--bg4)", padding: 16, fontSize: 12, fontFamily: "var(--mono)", resize: "vertical", outline: "none", lineHeight: 1.7 }} />
+            <textarea value={minutaDraft} onChange={(e) => { setMinutaDraft(e.target.value); setMinutaSaved(false); }} style={{ width: "100%", minHeight: 280, background: C.bg2, color: C.tx, border: `1px solid ${C.bg4}`, padding: 16, fontSize: 12, fontFamily: F.mono, resize: "vertical", outline: "none", lineHeight: 1.7 }} />
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
-              <button onClick={() => setMinutaDraft(generateMinuta(wd, an, appGddData, blockTimes))} style={{ background: "transparent", color: "var(--tx3)", border: "1px solid var(--bg4)", padding: "4px 12px", fontSize: 10, cursor: "pointer", fontFamily: "var(--mono)" }}>Regenerar</button>
-              <span style={{ fontSize: 10, color: "var(--tx3)", fontFamily: "var(--mono)" }}>{minutaDraft.length} chars</span>
+              <button onClick={() => setMinutaDraft(generateMinuta(wd, an, appGddData, blockTimes))} style={{ background: "transparent", color: C.tx3, border: `1px solid ${C.bg4}`, padding: "4px 12px", fontSize: 10, cursor: "pointer", fontFamily: F.mono }}>Regenerar</button>
+              <span style={{ fontSize: 10, color: C.tx3, fontFamily: F.mono }}>{minutaDraft.length} chars</span>
               {slackStatus && (
-                <span style={{ fontSize: 11, fontWeight: 600, fontFamily: "var(--mono)", color: slackStatus === "ok" ? "var(--green)" : slackStatus === "error" ? "var(--red)" : "var(--yellow)" }}>
+                <span style={{ fontSize: 11, fontWeight: 600, fontFamily: F.mono, color: slackStatus === "ok" ? C.green : slackStatus === "error" ? C.red : C.yellow }}>
                   {slackStatus === "sending" ? "Enviando a Slack..." : slackStatus === "ok" ? "Enviado a #general" : "Sin token Slack -- copiado al portapapeles"}
                 </span>
               )}
@@ -511,9 +512,9 @@ export default function App() {
         )}
 
         {eMin >= 60 && !finished && (
-          <div style={{ background: "rgba(255,69,58,.06)", border: "0.3px solid rgba(255,69,58,.2)", borderLeft: "2px solid var(--red)", padding: "10px 14px", marginBottom: 12, display: "flex", alignItems: "center", gap: 8, fontSize: 12 }}>
-            <span style={{ color: "var(--red)", fontWeight: 600 }}>Overtime</span>
-            <span style={{ color: "var(--tx3)" }}>→ ⏹ para cerrar</span>
+          <div style={{ background: "rgba(255,69,58,.06)", border: "0.3px solid rgba(255,69,58,.2)", borderLeft: `2px solid ${C.red}`, padding: "10px 14px", marginBottom: 12, display: "flex", alignItems: "center", gap: 8, fontSize: 12 }}>
+            <span style={{ color: C.red, fontWeight: 600 }}>Overtime</span>
+            <span style={{ color: C.tx3 }}>→ ⏹ para cerrar</span>
           </div>
         )}
 
@@ -530,7 +531,7 @@ export default function App() {
           {tabs.map((t) => {
             const isAct = tab === t.id, isLive = running && block.tab === t.id;
             return (
-              <button key={t.id} id={`tab-${t.id}`} role="tab" aria-selected={isAct} tabIndex={isAct ? 0 : -1} aria-controls="main-content" onClick={() => setTab(t.id)} aria-label={t.label} style={{ background: "transparent", color: isAct ? "var(--tx)" : "var(--tx3)", border: "none", borderBottom: isAct ? `2px solid ${t.color}` : "2px solid transparent", padding: "8px 12px", fontSize: 12, fontWeight: isAct ? 700 : 400, cursor: "pointer", fontFamily: "var(--sans)", marginBottom: -1, letterSpacing: "-0.01em", transition: "all .2s", flexShrink: 0, whiteSpace: "nowrap" }}>
+              <button key={t.id} id={`tab-${t.id}`} role="tab" aria-selected={isAct} tabIndex={isAct ? 0 : -1} aria-controls="main-content" onClick={() => setTab(t.id)} aria-label={t.label} style={{ background: "transparent", color: isAct ? C.tx : C.tx3, border: "none", borderBottom: isAct ? `2px solid ${t.color}` : "2px solid transparent", padding: "8px 12px", fontSize: 12, fontWeight: isAct ? 700 : 400, cursor: "pointer", fontFamily: F.sans, marginBottom: -1, letterSpacing: "-0.01em", transition: "all .2s", flexShrink: 0, whiteSpace: "nowrap" }}>
                 {isLive && <span aria-hidden="true" style={{ display: "inline-block", width: 5, height: 5, borderRadius: "50%", background: block.color, animation: "liveDot 1s ease infinite", marginRight: 5, verticalAlign: "middle" }} />}
                 <span aria-hidden="true">{t.icon}</span> {t.label}
               </button>
@@ -548,12 +549,12 @@ export default function App() {
         </div>
 
         {/* Footer */}
-        <div style={{ marginTop: 32, padding: "12px 0", borderTop: "1px solid var(--bg4)" }}>
+        <div style={{ marginTop: 32, padding: "12px 0", borderTop: `1px solid ${C.bg4}` }}>
           {confirmReset ? (
             <div style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "center" }}>
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--tx)" }}>Resetear sesion de hoy?</div>
-                <div style={{ fontSize: 11, color: "var(--tx3)", marginTop: 2 }}>Borra focos, compromisos y presentadores. Las minutas historicas NO se eliminan.</div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: C.tx }}>Resetear sesion de hoy?</div>
+                <div style={{ fontSize: 11, color: C.tx3, marginTop: 2 }}>Borra focos, compromisos y presentadores. Las minutas historicas NO se eliminan.</div>
               </div>
               <button onClick={() => {
                 const blob = new Blob([JSON.stringify(wd, null, 2)], { type: "application/json" });
@@ -565,7 +566,7 @@ export default function App() {
                 a.click();
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
-              }} style={{ background: "var(--bg3)", color: "var(--tx2)", border: "none", borderRadius: 8, padding: "5px 16px", fontSize: 12, cursor: "pointer", flexShrink: 0 }}>Descargar backup</button>
+              }} style={{ background: C.bg3, color: C.tx2, border: "none", borderRadius: 8, padding: "5px 16px", fontSize: 12, cursor: "pointer", flexShrink: 0 }}>Descargar backup</button>
               <button onClick={async () => {
                 await logAudit("session_reset", "Reset de sesion: " + TODAY_STR, { date: TODAY_STR, focos_areas: Object.keys(wd.focos || {}), compromisos_count: (wd.compromisos || []).length });
                 await storeSet(STORE_KEY + ":before_reset", wd);
@@ -573,16 +574,16 @@ export default function App() {
                 setWd(emptyWeekly()); setFinished(false); setMinutaDraft(""); setMinutaSaved(false);
                 setElapsed(0); elRef.current = 0; setCurrentBlockIdx(0); setBlockTimes({});
                 blockStartRef.current = null; setSlackStatus(null); setConfirmReset(false);
-              }} style={{ background: "var(--red)", color: "#fff", border: "none", borderRadius: 8, padding: "5px 16px", fontSize: 12, fontWeight: 600, cursor: "pointer", flexShrink: 0 }}>Si, resetear</button>
-              <button onClick={() => setConfirmReset(false)} style={{ background: "var(--bg3)", color: "var(--tx2)", border: "none", borderRadius: 8, padding: "5px 16px", fontSize: 12, cursor: "pointer" }}>Cancelar</button>
+              }} style={{ background: C.red, color: "#fff", border: "none", borderRadius: 8, padding: "5px 16px", fontSize: 12, fontWeight: 600, cursor: "pointer", flexShrink: 0 }}>Si, resetear</button>
+              <button onClick={() => setConfirmReset(false)} style={{ background: C.bg3, color: C.tx2, border: "none", borderRadius: 8, padding: "5px 16px", fontSize: 12, cursor: "pointer" }}>Cancelar</button>
             </div>
           ) : (
             <>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: 11, color: "var(--tx2)", opacity: 0.5, fontFamily: "var(--mono)" }}>v9.0 · mkt corp upax</span>
+              <span style={{ fontSize: 11, color: C.tx2, opacity: 0.5, fontFamily: F.mono }}>v9.0 · mkt corp upax</span>
               <div style={{ display:"flex", gap:6, alignItems:"center" }}>
-                <button onClick={() => setAuditOpen(!auditOpen)} onMouseEnter={e => e.currentTarget.style.opacity = "1"} onMouseLeave={e => e.currentTarget.style.opacity = "0.7"} style={{ background:"transparent", color:"var(--tx3)", border:"1px solid rgba(0,0,0,.1)", borderRadius:"var(--r-sm)", padding:"3px 10px", fontSize:10, cursor:"pointer", opacity:0.7 }}>Audit</button>
-                <button onClick={() => setConfirmReset(true)} onMouseEnter={e => e.currentTarget.style.opacity = "1"} onMouseLeave={e => e.currentTarget.style.opacity = "0.7"} title="Limpiar focos, compromisos y presentadores de la sesion actual" style={{ background: "transparent", color: "var(--red)", border: "1px solid rgba(255,59,48,.2)", borderRadius: "var(--r-sm)", padding: "3px 10px", fontSize: 10, cursor: "pointer", opacity: 0.7 }}>Reset sesion</button>
+                <button onClick={() => setAuditOpen(!auditOpen)} onMouseEnter={e => e.currentTarget.style.opacity = "1"} onMouseLeave={e => e.currentTarget.style.opacity = "0.7"} style={{ background:"transparent", color:C.tx3, border:"1px solid rgba(0,0,0,.1)", borderRadius:R.sm, padding:"3px 10px", fontSize:10, cursor:"pointer", opacity:0.7 }}>Audit</button>
+                <button onClick={() => setConfirmReset(true)} onMouseEnter={e => e.currentTarget.style.opacity = "1"} onMouseLeave={e => e.currentTarget.style.opacity = "0.7"} title="Limpiar focos, compromisos y presentadores de la sesion actual" style={{ background: "transparent", color: C.red, border: "1px solid rgba(255,59,48,.2)", borderRadius: R.sm, padding: "3px 10px", fontSize: 10, cursor: "pointer", opacity: 0.7 }}>Reset sesion</button>
               </div>
             </div>
             {auditOpen && <AuditLogPanel />}
