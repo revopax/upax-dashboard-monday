@@ -5,6 +5,7 @@ import { WEEK, shortName, parseTL, daysDiff, normalizeSquad, copyToClipboard, no
 import { storeSet } from '../lib/storage'
 import { authHeaders } from '../lib/api'
 import { generateMinuta } from '../lib/minuta'
+import { C, R, F } from '../lib/tokens'
 
 function parseWhoWhen(text) {
   const idx = text.indexOf("→");
@@ -44,27 +45,27 @@ function renderMinutaVisual(text, wd2, an, gdd2) {
   const an2 = an;
 
   const SectionWrap = ({ num, title, sub, color, children }) => (
-    <div style={{ marginBottom: 20, borderRadius: "var(--r)", overflow: "hidden", border: "1px solid var(--bg4)" }}>
+    <div style={{ marginBottom: 20, borderRadius: R.default, overflow: "hidden", border: `1px solid ${C.bg4}` }}>
       <div style={{ background: color + "15", borderLeft: "4px solid " + color, padding: "10px 16px", display: "flex", alignItems: "center", gap: 8 }}>
-        <span style={{ fontFamily: "var(--mono)", fontSize: 10, fontWeight: 800, color, background: color + "22", borderRadius: 5, padding: "2px 7px", flexShrink: 0 }}>{num}</span>
-        <span style={{ fontSize: 13, fontWeight: 700, color: "var(--tx)" }}>{title}</span>
-        {sub && <span style={{ fontSize: 11, color: "var(--tx3)", marginLeft: 6 }}>{sub}</span>}
+        <span style={{ fontFamily: F.mono, fontSize: 10, fontWeight: 800, color, background: color + "22", borderRadius: 5, padding: "2px 7px", flexShrink: 0 }}>{num}</span>
+        <span style={{ fontSize: 13, fontWeight: 700, color: C.tx }}>{title}</span>
+        {sub && <span style={{ fontSize: 11, color: C.tx3, marginLeft: 6 }}>{sub}</span>}
       </div>
-      <div style={{ background: "var(--bg2)" }}>{children}</div>
+      <div style={{ background: C.bg2 }}>{children}</div>
     </div>
   );
 
   const AlertRow = ({ label, items, color, renderItem }) => items.length === 0 ? null : (
-    <div style={{ padding: "10px 16px", borderTop: "1px solid var(--bg4)" }}>
+    <div style={{ padding: "10px 16px", borderTop: `1px solid ${C.bg4}` }}>
       <div style={{ fontSize: 11, fontWeight: 700, color, marginBottom: 6, display: "flex", alignItems: "center", gap: 6 }}>
-        {label} <span style={{ fontFamily: "var(--mono)", fontSize: 12 }}>({items.length})</span>
+        {label} <span style={{ fontFamily: F.mono, fontSize: 12 }}>({items.length})</span>
       </div>
       {items.slice(0, 4).map((it, i) => (
-        <div key={i} style={{ display: "flex", gap: 8, alignItems: "center", padding: "3px 0", fontSize: 11, borderBottom: i < Math.min(items.length, 4) - 1 ? "1px solid var(--bg3)" : "none" }}>
+        <div key={i} style={{ display: "flex", gap: 8, alignItems: "center", padding: "3px 0", fontSize: 11, borderBottom: i < Math.min(items.length, 4) - 1 ? `1px solid ${C.bg3}` : "none" }}>
           {renderItem(it)}
         </div>
       ))}
-      {items.length > 4 && <div style={{ fontSize: 10, color: "var(--tx3)", marginTop: 3 }}>+{items.length - 4} más</div>}
+      {items.length > 4 && <div style={{ fontSize: 10, color: C.tx3, marginTop: 3 }}>+{items.length - 4} más</div>}
     </div>
   );
 
@@ -75,24 +76,24 @@ function renderMinutaVisual(text, wd2, an, gdd2) {
 
   const dateLabel = text ? text.split("\n")[0].replace("WEEKLY MKT CORP · ", "") : "";
   const header = (
-    <div style={{ marginBottom: 24, paddingBottom: 16, borderBottom: "2px solid var(--bg4)" }}>
+    <div style={{ marginBottom: 24, paddingBottom: 16, borderBottom: `2px solid ${C.bg4}` }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
         <span style={{ fontSize: 28 }}>⚡</span>
         <div>
-          <div style={{ fontSize: 11, fontWeight: 700, color: "var(--tx3)", textTransform: "uppercase", letterSpacing: "0.15em" }}>Weekly Mkt Corp · Upax</div>
-          <div style={{ fontSize: 22, fontWeight: 800, color: "var(--tx)", letterSpacing: "-0.03em", lineHeight: 1.1 }}>MINUTA SEMANAL</div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.tx3, textTransform: "uppercase", letterSpacing: "0.15em" }}>Weekly Mkt Corp · Upax</div>
+          <div style={{ fontSize: 22, fontWeight: 800, color: C.tx, letterSpacing: "-0.03em", lineHeight: 1.1 }}>MINUTA SEMANAL</div>
         </div>
       </div>
-      <div style={{ fontSize: 14, color: "var(--tx2)", fontWeight: 500 }}>{dateLabel}</div>
+      <div style={{ fontSize: 14, color: C.tx2, fontWeight: 500 }}>{dateLabel}</div>
     </div>
   );
 
   const mes = gdd.mes || {};
   const gddMetrics = [
-    { label: "Leads", cur: s.leads||0, prev: a.leads||0, mes: mes.leads||0, ytd: y.leads||0, color: "var(--blue)" },
-    { label: "MQLs",  cur: s.mqls||0,  prev: a.mqls||0,  mes: mes.mqls||0,  ytd: y.mqls||0,  color: "var(--purple)" },
-    { label: "SQLs",  cur: s.sqls||0,  prev: a.sqls||0,  mes: mes.sqls||0,  ytd: y.sqls||0,  color: "var(--green)" },
-    { label: "Opps",  cur: s.opps||0,  prev: a.opps||0,  mes: mes.opps||0,  ytd: y.opps||0,  color: "var(--yellow)" },
+    { label: "Leads", cur: s.leads||0, prev: a.leads||0, mes: mes.leads||0, ytd: y.leads||0, color: C.blue },
+    { label: "MQLs",  cur: s.mqls||0,  prev: a.mqls||0,  mes: mes.mqls||0,  ytd: y.mqls||0,  color: C.purple },
+    { label: "SQLs",  cur: s.sqls||0,  prev: a.sqls||0,  mes: mes.sqls||0,  ytd: y.sqls||0,  color: C.green },
+    { label: "Opps",  cur: s.opps||0,  prev: a.opps||0,  mes: mes.opps||0,  ytd: y.opps||0,  color: C.yellow },
   ];
   const pTotal = s.pipeline_total || ((s.pipeline_mkt||0)+(s.pipeline_com||0));
   const fmtDateDMY = (dateStr) => {
@@ -103,32 +104,32 @@ function renderMinutaVisual(text, wd2, an, gdd2) {
   };
   const gddSub = f.semana_desde ? `${fmtDateDMY(f.semana_desde)}${f.semana_hasta ? " al " + fmtDateDMY(f.semana_hasta) : ""}` : "";
   const sec1 = (
-    <SectionWrap num="1" title="GENERACIÓN DE DEMANDA" sub={gddSub} color="var(--blue)">
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 1, background: "var(--bg4)" }}>
+    <SectionWrap num="1" title="GENERACIÓN DE DEMANDA" sub={gddSub} color={C.blue}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 1, background: C.bg4 }}>
         {gddMetrics.map((m, i) => {
           const pct = pctChg(m.cur, m.prev);
           return (
-            <div key={i} style={{ padding: "14px 16px", background: "var(--bg2)" }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: "var(--tx3)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 6 }}>{m.label}</div>
-              <div style={{ fontFamily: "var(--mono)", fontSize: 28, fontWeight: 800, color: m.color, lineHeight: 1, letterSpacing: "-0.04em" }}>{m.cur.toLocaleString()}</div>
+            <div key={i} style={{ padding: "14px 16px", background: C.bg2 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: C.tx3, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 6 }}>{m.label}</div>
+              <div style={{ fontFamily: F.mono, fontSize: 28, fontWeight: 800, color: m.color, lineHeight: 1, letterSpacing: "-0.04em" }}>{m.cur.toLocaleString()}</div>
               <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 6 }}>
-                {pct !== null && <span style={{ fontSize: 11, fontWeight: 700, color: pct >= 0 ? "var(--green)" : "var(--red)" }}>{pct >= 0 ? "▲" : "▼"}{Math.abs(pct)}%</span>}
-                <span style={{ fontSize: 10, color: "var(--tx3)" }}>vs sem. ant.</span>
+                {pct !== null && <span style={{ fontSize: 11, fontWeight: 700, color: pct >= 0 ? C.green : C.red }}>{pct >= 0 ? "▲" : "▼"}{Math.abs(pct)}%</span>}
+                <span style={{ fontSize: 10, color: C.tx3 }}>vs sem. ant.</span>
               </div>
-              {m.mes > 0 && <div style={{ marginTop: 5, fontSize: 10, color: "var(--tx3)", borderTop: "1px solid var(--bg4)", paddingTop: 4 }}>
-                <span style={{ color: "var(--tx2)", fontWeight: 600 }}>{m.mes.toLocaleString()}</span> <span>acum. mes</span>
+              {m.mes > 0 && <div style={{ marginTop: 5, fontSize: 10, color: C.tx3, borderTop: `1px solid ${C.bg4}`, paddingTop: 4 }}>
+                <span style={{ color: C.tx2, fontWeight: 600 }}>{m.mes.toLocaleString()}</span> <span>acum. mes</span>
               </div>}
             </div>
           );
         })}
       </div>
-      <div style={{ padding: "10px 16px", borderTop: "1px solid var(--bg4)", display: "flex", gap: 16, flexWrap: "wrap", alignItems: "center" }}>
+      <div style={{ padding: "10px 16px", borderTop: `1px solid ${C.bg4}`, display: "flex", gap: 16, flexWrap: "wrap", alignItems: "center" }}>
         {pTotal > 0 && <>
-          <div style={{ fontSize: 12, color: "var(--tx3)" }}>Pipeline <span style={{ fontWeight: 700, color: "var(--tx)", fontFamily: "var(--mono)" }}>{fmtM(pTotal)}</span></div>
-          <div style={{ fontSize: 12, color: "var(--tx3)" }}>Mkt <span style={{ fontWeight: 600 }}>{fmtM(s.pipeline_mkt||0)}</span></div>
-          <div style={{ fontSize: 12, color: "var(--tx3)" }}>Com <span style={{ fontWeight: 600 }}>{fmtM(s.pipeline_com||0)}</span></div>
+          <div style={{ fontSize: 12, color: C.tx3 }}>Pipeline <span style={{ fontWeight: 700, color: C.tx, fontFamily: F.mono }}>{fmtM(pTotal)}</span></div>
+          <div style={{ fontSize: 12, color: C.tx3 }}>Mkt <span style={{ fontWeight: 600 }}>{fmtM(s.pipeline_mkt||0)}</span></div>
+          <div style={{ fontSize: 12, color: C.tx3 }}>Com <span style={{ fontWeight: 600 }}>{fmtM(s.pipeline_com||0)}</span></div>
         </>}
-        {f.lastUpdate && <div style={{ fontSize: 10, color: "var(--tx3)", marginLeft: "auto" }}>Actualizado: {f.lastUpdate}</div>}
+        {f.lastUpdate && <div style={{ fontSize: 10, color: C.tx3, marginLeft: "auto" }}>Actualizado: {f.lastUpdate}</div>}
       </div>
     </SectionWrap>
   );
@@ -142,10 +143,10 @@ function renderMinutaVisual(text, wd2, an, gdd2) {
     const stoppedItems = an2.stoppedWeek||[];
 
     const alerts = [
-      { val: ven,       label: "Vencidos",  color: ven>0?"var(--red)":"var(--green)",    icon: "⏰", sub: ven>0?"requieren acción":"Al día" },
-      { val: det,       label: "Detenidos", color: det>0?"var(--yellow)":"var(--green)",  icon: "🚫", sub: det>0?"bloqueados":"Sin bloqueos" },
-      { val: spr+rev+mod, label: "Activos", color: "var(--blue)",                         icon: "⚡", sub: (rev+mod)+" en revisión" },
-      { val: done,      label: "Done sem.", color: done>0?"var(--green)":"var(--tx3)",    icon: "✅", sub: (an2.doneTotal||0)+" total" },
+      { val: ven,       label: "Vencidos",  color: ven>0?C.red:C.green,    icon: "⏰", sub: ven>0?"requieren acción":"Al día" },
+      { val: det,       label: "Detenidos", color: det>0?C.yellow:C.green,  icon: "🚫", sub: det>0?"bloqueados":"Sin bloqueos" },
+      { val: spr+rev+mod, label: "Activos", color: C.blue,                         icon: "⚡", sub: (rev+mod)+" en revisión" },
+      { val: done,      label: "Done sem.", color: done>0?C.green:C.tx3,    icon: "✅", sub: (an2.doneTotal||0)+" total" },
     ];
 
     const sqShort = (it) => {
@@ -168,19 +169,19 @@ function renderMinutaVisual(text, wd2, an, gdd2) {
     };
 
     return (
-      <SectionWrap num="2" title="PANORAMA OPERATIVO" color="var(--purple)">
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 0, background: "var(--bg4)", overflow: "hidden" }}>
+      <SectionWrap num="2" title="PANORAMA OPERATIVO" color={C.purple}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 0, background: C.bg4, overflow: "hidden" }}>
           {alerts.map((al, i) => (
-            <div key={i} style={{ padding: "14px 16px", background: "var(--bg2)", textAlign: "center", borderRight: i < 3 ? "1px solid var(--bg4)" : "none" }}>
+            <div key={i} style={{ padding: "14px 16px", background: C.bg2, textAlign: "center", borderRight: i < 3 ? `1px solid ${C.bg4}` : "none" }}>
               <div style={{ fontSize: 20, marginBottom: 6 }}>{al.icon}</div>
-              <div style={{ fontFamily: "var(--mono)", fontSize: 26, fontWeight: 800, color: al.color, lineHeight: 1 }}>{al.val}</div>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--tx)", marginTop: 5 }}>{al.label}</div>
-              <div style={{ fontSize: 10, color: "var(--tx3)", marginTop: 2 }}>{al.sub}</div>
+              <div style={{ fontFamily: F.mono, fontSize: 26, fontWeight: 800, color: al.color, lineHeight: 1 }}>{al.val}</div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: C.tx, marginTop: 5 }}>{al.label}</div>
+              <div style={{ fontSize: 10, color: C.tx3, marginTop: 2 }}>{al.sub}</div>
             </div>
           ))}
         </div>
 
-        <div style={{ borderTop: "1px solid var(--bg4)", padding: "4px 0" }}>
+        <div style={{ borderTop: `1px solid ${C.bg4}`, padding: "4px 0" }}>
           {SQUADS.map((sq, si) => {
             const d = an2.bySquad[sq.name]; if (!d) return null;
             const dw = an2.bySquadWeek?.[sq.name];
@@ -196,21 +197,21 @@ function renderMinutaVisual(text, wd2, an, gdd2) {
               return { name: shortName(p.name), badge, total: ppw.total, pVen, pDet };
             }).filter(Boolean);
             return (
-              <div key={sq.id} style={{ padding:"6px 16px", borderBottom: si<SQUADS.length-1?"1px solid var(--bg3)":"none" }}>
+              <div key={sq.id} style={{ padding:"6px 16px", borderBottom: si<SQUADS.length-1?`1px solid ${C.bg3}`:"none" }}>
                 <div style={{ display:"flex", alignItems:"center", gap:12 }}>
                   <div style={{ display:"flex", alignItems:"center", gap:6, minWidth:110 }}>
                     <span style={{ width:7, height:7, borderRadius:"50%", background:sq.color, flexShrink:0 }} />
                     <span style={{ fontWeight:700, color:sq.color, fontSize:12 }}>{sq.name.split(" ")[0]}</span>
                   </div>
-                  <span style={{ fontSize:11, color:"var(--tx2)", minWidth:72 }}>{act} esta semana</span>
-                  {ven2>0 && <span style={{ fontSize:11, color:"var(--red)", fontWeight:700 }}>{ven2} ⏰</span>}
-                  {det2>0 && <span style={{ fontSize:11, color:"var(--yellow)", fontWeight:700 }}>{det2} 🚫</span>}
+                  <span style={{ fontSize:11, color:C.tx2, minWidth:72 }}>{act} esta semana</span>
+                  {ven2>0 && <span style={{ fontSize:11, color:C.red, fontWeight:700 }}>{ven2} ⏰</span>}
+                  {det2>0 && <span style={{ fontSize:11, color:C.yellow, fontWeight:700 }}>{det2} 🚫</span>}
                 </div>
                 {personasSemana.length > 0 && (
                   <div style={{ display:"flex", gap:6, flexWrap:"wrap", paddingLeft:16, marginTop:3 }}>
                     {personasSemana.map(p => (
-                      <span key={p.name} style={{ fontSize:10, color: p.pVen?"var(--red)":p.pDet?"var(--yellow)":"var(--tx3)", background:"var(--bg3)", borderRadius:4, padding:"1px 6px", whiteSpace:"nowrap" }}>
-                        {p.name}{p.badge} <span style={{ fontFamily:"var(--mono)", fontSize:9 }}>{p.total}</span>
+                      <span key={p.name} style={{ fontSize:10, color: p.pVen?C.red:p.pDet?C.yellow:C.tx3, background:C.bg3, borderRadius:4, padding:"1px 6px", whiteSpace:"nowrap" }}>
+                        {p.name}{p.badge} <span style={{ fontFamily:F.mono, fontSize:9 }}>{p.total}</span>
                       </span>
                     ))}
                   </div>
@@ -220,33 +221,33 @@ function renderMinutaVisual(text, wd2, an, gdd2) {
           })}
         </div>
 
-        <AlertRow label="⏰ Top vencidos" items={an2.overdue||[]} color="var(--red)" renderItem={it => {
+        <AlertRow label="⏰ Top vencidos" items={an2.overdue||[]} color={C.red} renderItem={it => {
           const tl = parseTL(it.column_values?.timerange_mkzcqv0j);
           const d = tl.end ? daysDiff(TODAY, tl.end) : 0;
           return <>
-            <span style={{ fontFamily:"var(--mono)", color:"var(--red)", fontWeight:700, minWidth:32, fontSize:10 }}>-{d}d</span>
-            <span style={{ fontSize:9, fontWeight:700, color:"var(--tx3)", minWidth:52 }}>{sqShort(it)}</span>
-            <span style={{ flex:1, color:"var(--tx2)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{it.name}</span>
-            <span style={{ color:"var(--tx3)", fontSize:10 }}>{shortName(it.column_values?.person)}</span>
+            <span style={{ fontFamily:F.mono, color:C.red, fontWeight:700, minWidth:32, fontSize:10 }}>-{d}d</span>
+            <span style={{ fontSize:9, fontWeight:700, color:C.tx3, minWidth:52 }}>{sqShort(it)}</span>
+            <span style={{ flex:1, color:C.tx2, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{it.name}</span>
+            <span style={{ color:C.tx3, fontSize:10 }}>{shortName(it.column_values?.person)}</span>
           </>;
         }} />
 
-        <AlertRow label="🚫 Detenidos esta semana" items={stoppedItems} color="var(--yellow)" renderItem={it => <>
-          <span style={{ fontSize:9, fontWeight:700, color:"var(--tx3)", minWidth:52 }}>{sqShort(it)}</span>
-          <span style={{ flex:1, color:"var(--tx2)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{it.name}</span>
-          <span style={{ color:"var(--tx3)", fontSize:10 }}>{shortName(it.column_values?.person)}</span>
+        <AlertRow label="🚫 Detenidos esta semana" items={stoppedItems} color={C.yellow} renderItem={it => <>
+          <span style={{ fontSize:9, fontWeight:700, color:C.tx3, minWidth:52 }}>{sqShort(it)}</span>
+          <span style={{ flex:1, color:C.tx2, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{it.name}</span>
+          <span style={{ color:C.tx3, fontSize:10 }}>{shortName(it.column_values?.person)}</span>
         </>} />
 
-        <AlertRow label="📅 Sprint sin fecha" items={noCronoItems} color="var(--yellow)" renderItem={it => <>
-          <span style={{ fontSize:9, fontWeight:700, color:"var(--tx3)", minWidth:52 }}>{sqShort(it)}</span>
-          <span style={{ flex:1, color:"var(--tx2)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{it.name}</span>
-          <span style={{ color:"var(--tx3)", fontSize:10 }}>{shortName(it.column_values?.person)}</span>
+        <AlertRow label="📅 Sprint sin fecha" items={noCronoItems} color={C.yellow} renderItem={it => <>
+          <span style={{ fontSize:9, fontWeight:700, color:C.tx3, minWidth:52 }}>{sqShort(it)}</span>
+          <span style={{ flex:1, color:C.tx2, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{it.name}</span>
+          <span style={{ color:C.tx3, fontSize:10 }}>{shortName(it.column_values?.person)}</span>
         </>} />
 
-        <AlertRow label="👤 Sin responsable" items={noRespItems} color="var(--red)" renderItem={it => <>
-          <span style={{ fontSize:9, fontWeight:700, color:"var(--tx3)", minWidth:52 }}>{sqShort(it)}</span>
-          <span style={{ flex:1, color:"var(--tx2)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{it.name}</span>
-          <span style={{ color:"var(--red)", fontSize:10 }}>sin asignar</span>
+        <AlertRow label="👤 Sin responsable" items={noRespItems} color={C.red} renderItem={it => <>
+          <span style={{ fontSize:9, fontWeight:700, color:C.tx3, minWidth:52 }}>{sqShort(it)}</span>
+          <span style={{ flex:1, color:C.tx2, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{it.name}</span>
+          <span style={{ color:C.red, fontSize:10 }}>sin asignar</span>
         </>} />
 
       </SectionWrap>
@@ -262,28 +263,28 @@ function renderMinutaVisual(text, wd2, an, gdd2) {
     });
     if (!squadsWithData.length) return null;
     return (
-      <SectionWrap num="3" title="FOCOS POR SQUAD" color="var(--green)">
+      <SectionWrap num="3" title="FOCOS POR SQUAD" color={C.green}>
         <div style={{ padding: "8px 0" }}>
           {squadsWithData.map((sq, si) => {
             const raw = focos[sq.id];
             const arr = normalizeFocos(raw);
             const presenter = wd2?.presenters?.[sq.id] || sq.lead;
             return (
-              <div key={sq.id} style={{ borderBottom: si < squadsWithData.length-1 ? "2px solid var(--bg3)" : "none", paddingBottom: 12, marginBottom: si < squadsWithData.length-1 ? 4 : 0 }}>
+              <div key={sq.id} style={{ borderBottom: si < squadsWithData.length-1 ? `2px solid ${C.bg3}` : "none", paddingBottom: 12, marginBottom: si < squadsWithData.length-1 ? 4 : 0 }}>
                 <div style={{ display:"flex", alignItems:"center", gap:8, padding:"10px 16px 8px", background: sq.color+"0A" }}>
                   <div style={{ width:4, height:32, borderRadius:2, background:sq.color, flexShrink:0 }} />
                   <div>
                     <div style={{ fontSize:13, fontWeight:700, color:sq.color }}>{sq.name}</div>
-                    <div style={{ fontSize:11, color:"var(--tx3)" }}>{presenter}</div>
+                    <div style={{ fontSize:11, color:C.tx3 }}>{presenter}</div>
                   </div>
                 </div>
                 <div style={{ padding:"6px 16px 0" }}>
                   {arr.filter(f=>f.focos?.trim()).map((f,i) => {
                     const parts = f.focos.split(/\d+\)/).map(s=>s.trim()).filter(Boolean);
                     return (parts.length>1?parts:[f.focos.trim()]).map((p,j) => (
-                      <div key={i+"-"+j} style={{ display:"flex", gap:8, padding:"4px 0", borderBottom:"1px solid var(--bg3)", alignItems:"flex-start" }}>
+                      <div key={i+"-"+j} style={{ display:"flex", gap:8, padding:"4px 0", borderBottom:`1px solid ${C.bg3}`, alignItems:"flex-start" }}>
                         <span style={{ color:sq.color, fontWeight:700, flexShrink:0, marginTop:1 }}>·</span>
-                        <span style={{ fontSize:13, color:"var(--tx2)", lineHeight:1.5 }}>{p}</span>
+                        <span style={{ fontSize:13, color:C.tx2, lineHeight:1.5 }}>{p}</span>
                       </div>
                     ));
                   })}
@@ -291,9 +292,9 @@ function renderMinutaVisual(text, wd2, an, gdd2) {
                     const who = f.blocker_quien ? " → "+shortName(f.blocker_quien) : "";
                     const when = f.blocker_cuando ? " ("+new Date(f.blocker_cuando+"T12:00:00").toLocaleDateString("es-MX",{day:"numeric",month:"short"})+")" : "";
                     return (
-                      <div key={"b"+i} style={{ display:"flex", gap:8, padding:"5px 10px", margin:"4px 0", background:"rgba(255,59,48,.07)", borderRadius:6, borderLeft:"3px solid var(--red)", alignItems:"flex-start" }}>
-                        <span style={{ fontSize:11, fontWeight:700, color:"var(--red)", flexShrink:0 }}>⚠ BLOCKER</span>
-                        <span style={{ fontSize:12, color:"var(--tx2)", flex:1 }}>{f.blocker.trim()}<strong>{who}</strong>{when && <strong style={{color:"var(--red)"}}>{when}</strong>}</span>
+                      <div key={"b"+i} style={{ display:"flex", gap:8, padding:"5px 10px", margin:"4px 0", background:"rgba(255,59,48,.07)", borderRadius:6, borderLeft:`3px solid ${C.red}`, alignItems:"flex-start" }}>
+                        <span style={{ fontSize:11, fontWeight:700, color:C.red, flexShrink:0 }}>⚠ BLOCKER</span>
+                        <span style={{ fontSize:12, color:C.tx2, flex:1 }}>{f.blocker.trim()}<strong>{who}</strong>{when && <strong style={{color:C.red}}>{when}</strong>}</span>
                       </div>
                     );
                   })}
@@ -301,9 +302,9 @@ function renderMinutaVisual(text, wd2, an, gdd2) {
                     const who = f.necesito_quien ? " → "+shortName(f.necesito_quien) : "";
                     const when = f.necesito_cuando ? " ("+new Date(f.necesito_cuando+"T12:00:00").toLocaleDateString("es-MX",{day:"numeric",month:"short"})+")" : "";
                     return (
-                      <div key={"n"+i} style={{ display:"flex", gap:8, padding:"5px 10px", margin:"4px 0", background:"rgba(255,159,10,.07)", borderRadius:6, borderLeft:"3px solid var(--yellow)", alignItems:"flex-start" }}>
-                        <span style={{ fontSize:11, fontWeight:700, color:"var(--yellow)", flexShrink:0 }}>✋ NECESITO</span>
-                        <span style={{ fontSize:12, color:"var(--tx2)", flex:1 }}>{f.necesito.trim()}<strong>{who}</strong>{when && <strong style={{color:"var(--yellow)"}}>{when}</strong>}</span>
+                      <div key={"n"+i} style={{ display:"flex", gap:8, padding:"5px 10px", margin:"4px 0", background:"rgba(255,159,10,.07)", borderRadius:6, borderLeft:`3px solid ${C.yellow}`, alignItems:"flex-start" }}>
+                        <span style={{ fontSize:11, fontWeight:700, color:C.yellow, flexShrink:0 }}>✋ NECESITO</span>
+                        <span style={{ fontSize:12, color:C.tx2, flex:1 }}>{f.necesito.trim()}<strong>{who}</strong>{when && <strong style={{color:C.yellow}}>{when}</strong>}</span>
                       </div>
                     );
                   })}
@@ -318,18 +319,18 @@ function renderMinutaVisual(text, wd2, an, gdd2) {
 
   const comps2 = (wd2?.compromisos||[]).filter(c=>c.que?.trim());
   const sec4 = comps2.length ? (
-    <SectionWrap num="4" title="COMPROMISOS" color="var(--yellow)">
+    <SectionWrap num="4" title="COMPROMISOS" color={C.yellow}>
       <div style={{ padding: "8px 16px" }}>
         {comps2.map((c,i) => {
           const done = c.status === "done";
           const fecha = c.cuando ? new Date(c.cuando+"T12:00:00").toLocaleDateString("es-MX",{day:"numeric",month:"short"}) : "sin fecha";
           return (
-            <div key={i} style={{ display:"flex", gap:10, alignItems:"flex-start", padding:"6px 0", borderBottom: i<comps2.length-1?"1px solid var(--bg3)":"none", opacity: done?0.55:1 }}>
-              <span style={{ color: done?"var(--green)":"var(--blue)", fontSize:16, flexShrink:0, lineHeight:1.3, marginTop:1 }}>{done?"✓":"○"}</span>
-              <span style={{ flex:1, fontSize:13, color: done?"var(--tx3)":"var(--tx)", lineHeight:1.5, textDecoration: done?"line-through":"none" }}>{c.que.trim()}</span>
+            <div key={i} style={{ display:"flex", gap:10, alignItems:"flex-start", padding:"6px 0", borderBottom: i<comps2.length-1?`1px solid ${C.bg3}`:"none", opacity: done?0.55:1 }}>
+              <span style={{ color: done?C.green:C.blue, fontSize:16, flexShrink:0, lineHeight:1.3, marginTop:1 }}>{done?"✓":"○"}</span>
+              <span style={{ flex:1, fontSize:13, color: done?C.tx3:C.tx, lineHeight:1.5, textDecoration: done?"line-through":"none" }}>{c.que.trim()}</span>
               <div style={{ flexShrink:0, textAlign:"right" }}>
-                <div style={{ fontSize:11, fontWeight:600, color:"var(--tx2)" }}>{shortName(c.quien)||"—"}</div>
-                <div style={{ fontSize:10, color:"var(--tx3)" }}>{fecha}</div>
+                <div style={{ fontSize:11, fontWeight:600, color:C.tx2 }}>{shortName(c.quien)||"—"}</div>
+                <div style={{ fontSize:10, color:C.tx3 }}>{fecha}</div>
               </div>
             </div>
           );
@@ -353,23 +354,23 @@ function renderMinutaVisual(text, wd2, an, gdd2) {
     const col1 = all.slice(0, half), col2 = all.slice(half);
     const CRow = ({ person, squad, d, rank }) => {
       const pct = maxVal > 0 ? d.total / maxVal : 0;
-      const barColor = d.total > 10 ? "var(--red)" : d.total > 6 ? "var(--yellow)" : d.total > 0 ? "var(--green)" : "var(--bg4)";
-      const sqColor = SQUADS.find(s => s.name === squad)?.color || "var(--bg4)";
+      const barColor = d.total > 10 ? C.red : d.total > 6 ? C.yellow : d.total > 0 ? C.green : C.bg4;
+      const sqColor = SQUADS.find(s => s.name === squad)?.color || C.bg4;
       return (
-        <div style={{ display:"flex", alignItems:"center", gap:6, padding:"4px 0", borderBottom:"1px solid var(--bg3)", opacity: d.total===0 ? 0.45 : 1 }}>
-          <span style={{ fontFamily:"var(--mono)", fontSize:9, color:"var(--tx3)", minWidth:14, textAlign:"right" }}>{rank}</span>
+        <div style={{ display:"flex", alignItems:"center", gap:6, padding:"4px 0", borderBottom:`1px solid ${C.bg3}`, opacity: d.total===0 ? 0.45 : 1 }}>
+          <span style={{ fontFamily:F.mono, fontSize:9, color:C.tx3, minWidth:14, textAlign:"right" }}>{rank}</span>
           <span style={{ width:5, height:5, borderRadius:"50%", background:sqColor, flexShrink:0 }} />
-          <span style={{ fontSize:11, fontWeight: d.total>0 ? 600 : 400, flex:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", color:d.total>10?"var(--red)":"var(--tx)" }}>{shortName(person)}</span>
-          {d.stopped>0 && <span style={{ fontSize:9, color:"var(--red)", fontWeight:700 }}>🚫</span>}
-          <div style={{ width:44, height:4, background:"var(--bg4)", borderRadius:2, overflow:"hidden", flexShrink:0 }}>
+          <span style={{ fontSize:11, fontWeight: d.total>0 ? 600 : 400, flex:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", color:d.total>10?C.red:C.tx }}>{shortName(person)}</span>
+          {d.stopped>0 && <span style={{ fontSize:9, color:C.red, fontWeight:700 }}>🚫</span>}
+          <div style={{ width:44, height:4, background:C.bg4, borderRadius:2, overflow:"hidden", flexShrink:0 }}>
             <div style={{ width:(pct*100)+"%", height:"100%", background:barColor, borderRadius:2 }} />
           </div>
-          <span style={{ fontFamily:"var(--mono)", fontSize:11, fontWeight:700, color: d.total>0 ? barColor : "var(--tx3)", minWidth:20, textAlign:"right" }}>{d.total}</span>
+          <span style={{ fontFamily:F.mono, fontSize:11, fontWeight:700, color: d.total>0 ? barColor : C.tx3, minWidth:20, textAlign:"right" }}>{d.total}</span>
         </div>
       );
     };
     return (
-      <SectionWrap num="5" title="CARGA SEMANAL" sub={"("+WEEK.start.toLocaleDateString("es-MX",{day:"numeric",month:"short"})+" – "+WEEK.end.toLocaleDateString("es-MX",{day:"numeric",month:"short"})+")"} color="var(--cyan)">
+      <SectionWrap num="5" title="CARGA SEMANAL" sub={"("+WEEK.start.toLocaleDateString("es-MX",{day:"numeric",month:"short"})+" – "+WEEK.end.toLocaleDateString("es-MX",{day:"numeric",month:"short"})+")"} color={C.cyan}>
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"0 16px", padding:"10px 16px" }}>
           <div>{col1.map((p,i)=><CRow key={p.name} person={p.name} squad={p.squad} d={p.d} rank={i+1} />)}</div>
           <div>{col2.map((p,i)=><CRow key={p.name} person={p.name} squad={p.squad} d={p.d} rank={half+i+1} />)}</div>
@@ -498,7 +499,7 @@ function PdfButton({ text, dateStr, wd, analysis, gddData }) {
   }
 
   return (
-    <button onClick={handlePdf} style={{ background: "var(--tx)", color: "var(--bg)", border: "none", borderRadius: "var(--r-sm)", padding: "6px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+    <button onClick={handlePdf} style={{ background: C.tx, color: C.bg, border: "none", borderRadius: R.sm, padding: "6px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
       📄 PDF
     </button>
   );
@@ -526,8 +527,8 @@ function SlackButton({ text }) {
 
   return (
     <button onClick={handleSend} disabled={sending} style={{
-      background: sent ? "var(--green)" : err ? "var(--red)" : "linear-gradient(135deg,#4A154B,#611f69)",
-      color: "#fff", border: "none", borderRadius: "var(--r-sm)", padding: "6px 14px",
+      background: sent ? C.green : err ? C.red : "linear-gradient(135deg,#4A154B,#611f69)",
+      color: "#fff", border: "none", borderRadius: R.sm, padding: "6px 14px",
       fontSize: 12, fontWeight: 600, cursor: sending ? "default" : "pointer", opacity: sending ? 0.7 : 1,
     }}>
       {sent ? "✓ Enviado" : err ? "⚠️ Copiado" : sending ? "⏳" : "📨 Slack"}
@@ -561,27 +562,27 @@ function MinutaDetailView({ weekKey, data, todayWd, todayAnalysis, gddData, bloc
 
   return (
     <>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 20px", borderBottom: "1px solid var(--bg4)", flexShrink: 0, flexWrap: "wrap", gap: 6, overflowX: "hidden" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 20px", borderBottom: `1px solid ${C.bg4}`, flexShrink: 0, flexWrap: "wrap", gap: 6, overflowX: "hidden" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <button onClick={onBack} style={{ background: "var(--bg3)", border: "none", borderRadius: "var(--r-sm)", padding: "5px 10px", fontSize: 12, cursor: "pointer", color: "var(--tx3)" }}>← Volver</button>
+          <button onClick={onBack} style={{ background: C.bg3, border: "none", borderRadius: R.sm, padding: "5px 10px", fontSize: 12, cursor: "pointer", color: C.tx3 }}>← Volver</button>
           <div>
             <div style={{ fontSize: 14, fontWeight: 700 }}>📋 Minuta</div>
-            <div style={{ fontSize: 11, color: "var(--tx3)" }}>{dateFmt}</div>
+            <div style={{ fontSize: 11, color: C.tx3 }}>{dateFmt}</div>
           </div>
         </div>
         <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
           {editMode
-            ? <button onClick={handleSave} style={{ background: "var(--green)", color: "#fff", border: "none", borderRadius: "var(--r-sm)", padding: "6px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>{saved ? "✓" : "💾"}<span className="mobile-hide">{saved ? " Guardado" : " Guardar"}</span></button>
-            : <button onClick={() => { setEditMode(true); setEditText(rawText); }} style={{ background: "var(--bg3)", color: "var(--tx2)", border: "1px solid var(--bg4)", borderRadius: "var(--r-sm)", padding: "6px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>✏️<span className="mobile-hide"> Editar</span></button>}
-          <button onClick={handleCopy} style={{ background: copied ? "var(--green)" : "var(--blue)", color: "#fff", border: "none", borderRadius: "var(--r-sm)", padding: "6px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>{copied ? "✓" : "📋"}<span className="mobile-hide">{copied ? " Copiado" : " Copiar"}</span></button>
+            ? <button onClick={handleSave} style={{ background: C.green, color: "#fff", border: "none", borderRadius: R.sm, padding: "6px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>{saved ? "✓" : "💾"}<span className="mobile-hide">{saved ? " Guardado" : " Guardar"}</span></button>
+            : <button onClick={() => { setEditMode(true); setEditText(rawText); }} style={{ background: C.bg3, color: C.tx2, border: `1px solid ${C.bg4}`, borderRadius: R.sm, padding: "6px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>✏️<span className="mobile-hide"> Editar</span></button>}
+          <button onClick={handleCopy} style={{ background: copied ? C.green : C.blue, color: "#fff", border: "none", borderRadius: R.sm, padding: "6px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>{copied ? "✓" : "📋"}<span className="mobile-hide">{copied ? " Copiado" : " Copiar"}</span></button>
           <SlackButton text={displayText} />
           <PdfButton text={displayText} dateStr={dateStr} wd={visualWd} analysis={visualAn} gddData={visualGdd} />
-          <button onClick={onClose} style={{ background: "var(--bg3)", border: "none", width: 32, height: 32, borderRadius: 16, fontSize: 16, cursor: "pointer", color: "var(--tx3)", display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
+          <button onClick={onClose} style={{ background: C.bg3, border: "none", width: 32, height: 32, borderRadius: 16, fontSize: 16, cursor: "pointer", color: C.tx3, display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
         </div>
       </div>
       <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
         {editMode ? (
-          <textarea value={editText} onChange={e => setEditText(e.target.value)} style={{ flex: 1, width: "100%", background: "var(--bg3)", color: "var(--tx)", border: "none", padding: "16px 20px", fontSize: 12, fontFamily: "var(--mono)", resize: "none", outline: "none", lineHeight: 1.7 }} />
+          <textarea value={editText} onChange={e => setEditText(e.target.value)} style={{ flex: 1, width: "100%", background: C.bg3, color: C.tx, border: "none", padding: "16px 20px", fontSize: 12, fontFamily: F.mono, resize: "none", outline: "none", lineHeight: 1.7 }} />
         ) : (
           <div style={{ flex: 1, overflowY: "auto", padding: "16px 20px" }}>
             {renderMinutaVisual(rawText, visualWd, visualAn, visualGdd)}
