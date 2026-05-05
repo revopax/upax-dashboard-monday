@@ -52,7 +52,7 @@ const TabPanorama = React.memo(function TabPanorama({ analysis: an, items, onDri
                 {(d.phases["🚫 Detenido"] || 0) > 0 && <span style={{ fontSize: 11, fontWeight: 700, color: C.red }}>🚫 {d.phases["🚫 Detenido"]} det.</span>}
               </div>
             </div>
-            <Bar h={14} segs={[{ l: "Spr", v: d.phases["🚧 Sprint"] || 0, c: "var(--yellow)", ph: "🚧 Sprint" }, { l: "Rev", v: d.phases["👀 Review"] || 0, c: C.cyan, ph: "👀 Review" }, { l: "Mod", v: d.phases["⚙️ Modificación"] || 0, c: C.purple, ph: "⚙️ Modificación" }, { l: "Det", v: d.phases["🚫 Detenido"] || 0, c: "var(--red)", ph: "🚫 Detenido" }, { l: "BL", v: d.phases["⏳Backlog"] || 0, c: C.bg4, ph: "⏳Backlog" }]} onSegmentClick={onDrillDown ? (seg) => {
+            <Bar h={14} segs={[{ l: "Spr", v: d.phases["🚧 Sprint"] || 0, c: C.yellow, ph: "🚧 Sprint" }, { l: "Rev", v: d.phases["👀 Review"] || 0, c: C.cyan, ph: "👀 Review" }, { l: "Mod", v: d.phases["⚙️ Modificación"] || 0, c: C.purple, ph: "⚙️ Modificación" }, { l: "Det", v: d.phases["🚫 Detenido"] || 0, c: C.red, ph: "🚫 Detenido" }, { l: "BL", v: d.phases["⏳Backlog"] || 0, c: C.bg4, ph: "⏳Backlog" }]} onSegmentClick={onDrillDown ? (seg) => {
               const filtered = items.filter(it => normalizeSquad(it.column_values?.color_mkz0s203) === sq.name && it.column_values?.color_mkz09na === seg.ph);
               onDrillDown({ phase: `${sq.name} — ${seg.l}`, items: filtered });
             } : undefined} />
