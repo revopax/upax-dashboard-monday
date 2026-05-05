@@ -1,10 +1,11 @@
 'use client'
 // lib/utils.js — funciones puras de fecha, analisis y helpers
 // Fuente canonica para TODAS las funciones utilitarias. constants.js solo tiene datos.
-import { TODAY_STR, TODAY, PERSONAS, SQUAD_ALIASES } from './constants'
+import { TODAY_STR, TODAY, PERSONAS, SQUAD_ALIASES, SQUADS, normalizeSquad as _normalizeSquad } from './constants'
 
 // Re-export normalizeSquad de constants.js (vive ahi porque depende de SQUAD_ALIASES)
 export { normalizeSquad } from './constants'
+const normalizeSquad = _normalizeSquad
 
 export const PERSON_NAMES = PERSONAS.map((p) => p.name);
 
@@ -179,4 +180,33 @@ export function normalizeFocos(focosEntry) {
   if (Array.isArray(focosEntry)) return focosEntry;
   if (focosEntry?.focos || focosEntry?.blocker || focosEntry?.necesito) return [focosEntry];
   return [];
+}
+
+// Shared roadmap filter: active phases with deadline in current month, grouped by squad
+export function getSprintRoadmap(items) {
+  const now = new Date(TODAY_STR + 'T12:00:00')
+  const year = now.getFullYear()
+  const month = now.getMonth()
+  const ACTIVE_PHASES = ['🚧 Sprint', '👀 Review', '⚙️ Modificación']
+
+  const filtered = items.filter(it => {
+    const cv = it.column_values || {}
+    const phase = cv.color_mkz09na
+    const deadline = cv.date_mm1b10rx
+    if (!ACTIVE_PHASES.includes(phase) || !deadline) return false
+    const [dy, dm] = deadline.split('-').map(Number)
+    return dy === year && dm === month + 1
+  })
+
+  const SQUAD_ORDER = SQUADS.map(s => s.name)
+  filtered.sort((a, b) => {
+    const sqA = SQUAD_ORDER.indexOf(normalizeSquad(a.column_values?.color_mkz0s203 || ''))
+    const sqB = SQUAD_ORDER.indexOf(normalizeSquad(b.column_values?.color_mkz0s203 || ''))
+    const orderA = sqA >= 0 ? sqA : 999
+    const orderB = sqB >= 0 ? sqB : 999
+    if (orderA !== orderB) return orderA - orderB
+    return (a.column_values?.date_mm1b10rx || '').localeCompare(b.column_values?.date_mm1b10rx || '')
+  })
+
+  return filtered
 }
