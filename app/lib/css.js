@@ -41,6 +41,7 @@ select{-webkit-appearance:auto}
   .sticky-nav{overflow-x:auto;-webkit-overflow-scrolling:touch;padding:0 8px;margin:0 -8px;-webkit-mask-image:linear-gradient(to right,#000 85%,transparent);mask-image:linear-gradient(to right,#000 85%,transparent)}
   .mobile-stack{flex-direction:column!important}
   .mobile-hide{display:none!important}
+  .mobile-only{display:block!important}
   .mobile-full{width:100%!important;min-width:0!important}
   .kpi-grid-mobile{grid-template-columns:repeat(2,1fr)!important}
   .compromisos-row{grid-template-columns:26px 1fr 80px 50px!important}
