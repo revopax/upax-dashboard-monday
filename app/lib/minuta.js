@@ -1,9 +1,9 @@
 'use client'
 // lib/minuta.js — generador de texto plano de la minuta
 import { TODAY_STR, SQUADS, PERSONAS } from './constants'
-import { WEEK, shortName, normalizeSquad } from './utils'
+import { WEEK, shortName, normalizeSquad, getSprintRoadmap } from './utils'
 
-export function generateMinuta(wd, analysis, gddData, blockTimes) {
+export function generateMinuta(wd, analysis, gddData, mqlBreakdown, blockTimes, items) {
   const an = analysis, comps = wd?.compromisos || [];
   const dateStr = new Date(TODAY_STR).toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
   const LINE = "─".repeat(48);
@@ -13,33 +13,80 @@ export function generateMinuta(wd, analysis, gddData, blockTimes) {
 
   t += `WEEKLY MKT CORP · ${dateStr.toUpperCase()}\n${LINE}\n\n`;
 
-  // 1. GENERACIÓN DE DEMANDA
+  // 1. GENERACION DE DEMANDA — dual: anterior + actual
   {
     const gdd = gddData || { semana: {}, anterior: {}, ytd: {}, fechas: {} };
     const s = gdd.semana || {}, a = gdd.anterior || {}, y = gdd.ytd || {}, f = gdd.fechas || {};
-    const pTotal = s.pipeline_total || ((s.pipeline_mkt||0) + (s.pipeline_com||0));
-    const hasData = s.leads || s.mqls || s.sqls || s.opps;
-    t += `1. GENERACIÓN DE DEMANDA`;
-    if (f.semana_desde) t += ` (${f.semana_desde}${f.semana_hasta ? " al "+f.semana_hasta : ""})`;
+    const hasData = s.leads || s.mqls || s.sqls || s.opps || a.leads || a.mqls || a.sqls || a.opps;
+
+    t += `1. GENERACION DE DEMANDA`;
     t += `\n`;
+
     if (hasData) {
-      const fmt4 = (label, cur, prev, mktVal, comVal) => {
+      const fmt4 = (label, val, mktVal, comVal) => {
+        let line = `   · ${label.padEnd(8)} ${String(val.toLocaleString()).padStart(6)}`;
+        if (mktVal != null && comVal != null) line += `  (Mkt: ${mktVal} | Com: ${comVal})`;
+        return line + '\n';
+      };
+
+      const fmt4Delta = (label, cur, prev, mktVal, comVal) => {
         const pct = arrow(cur, prev);
         let line = `   · ${label.padEnd(8)} ${String(cur.toLocaleString()).padStart(6)}${pct ? "  "+pct : ""}`;
         if (mktVal != null && comVal != null) line += `  (Mkt: ${mktVal} | Com: ${comVal})`;
         return line + '\n';
       };
-      t += fmt4("Leads", s.leads||0, a.leads||0, s.leads_mkt, s.leads_com);
-      t += fmt4("MQLs",  s.mqls||0,  a.mqls||0,  s.mqls_mkt,  s.mqls_com);
-      t += fmt4("SQLs",  s.sqls||0,  a.sqls||0,  s.sqls_mkt,  s.sqls_com);
-      t += fmt4("Opps",  s.opps||0,  a.opps||0,  s.opps_mkt,  s.opps_com);
+
+      // Calculate prev week date range for label
+      const prevDesde = f.semana_desde ? (() => {
+        const d = new Date(f.semana_desde + 'T12:00:00');
+        d.setDate(d.getDate() - 7);
+        return d.toLocaleDateString("es-MX", { day: "numeric", month: "short" });
+      })() : '';
+      const prevHasta = f.semana_desde ? (() => {
+        const d = new Date(f.semana_desde + 'T12:00:00');
+        d.setDate(d.getDate() - 1);
+        return d.toLocaleDateString("es-MX", { day: "numeric", month: "short" });
+      })() : '';
+      const curDesde = f.semana_desde ? new Date(f.semana_desde + 'T12:00:00').toLocaleDateString("es-MX", { day: "numeric", month: "short" }) : '';
+      const curHasta = f.semana_hasta ? new Date(f.semana_hasta + 'T12:00:00').toLocaleDateString("es-MX", { day: "numeric", month: "short" }) : '';
+
+      // Semana anterior (datos cerrados)
+      if (a.leads || a.mqls || a.sqls || a.opps) {
+        t += `   Semana anterior${prevDesde ? ` (${prevDesde} – ${prevHasta})` : ''}\n`;
+        t += fmt4("Leads", a.leads||0, a.leads_mkt, a.leads_com);
+        t += fmt4("MQLs",  a.mqls||0,  a.mqls_mkt,  a.mqls_com);
+        t += fmt4("SQLs",  a.sqls||0,  a.sqls_mkt,  a.sqls_com);
+        t += fmt4("Opps",  a.opps||0,  a.opps_mkt,  a.opps_com);
+        const aPipeline = a.pipeline_total || ((a.pipeline_mkt||0) + (a.pipeline_com||0));
+        if (aPipeline > 0) t += `   · Pipeline  ${fmtM(aPipeline)}  (Mkt ${fmtM(a.pipeline_mkt||0)} | Com ${fmtM(a.pipeline_com||0)})\n`;
+        t += `\n`;
+      }
+
+      // Semana actual (con deltas vs anterior)
+      t += `   Semana actual${curDesde ? ` (${curDesde} – ${curHasta})` : ''}\n`;
+      t += fmt4Delta("Leads", s.leads||0, a.leads||0, s.leads_mkt, s.leads_com);
+      t += fmt4Delta("MQLs",  s.mqls||0,  a.mqls||0,  s.mqls_mkt,  s.mqls_com);
+      t += fmt4Delta("SQLs",  s.sqls||0,  a.sqls||0,  s.sqls_mkt,  s.sqls_com);
+      t += fmt4Delta("Opps",  s.opps||0,  a.opps||0,  s.opps_mkt,  s.opps_com);
+      const pTotal = s.pipeline_total || ((s.pipeline_mkt||0) + (s.pipeline_com||0));
       if (pTotal > 0) t += `   · Pipeline  ${fmtM(pTotal)}  (Mkt ${fmtM(s.pipeline_mkt||0)} | Com ${fmtM(s.pipeline_com||0)})\n`;
+
       if (y.leads) t += `   · YTD: Leads ${y.leads.toLocaleString()} · MQLs ${y.mqls||0} · SQLs ${y.sqls||0} · Opps ${y.opps||0}\n`;
     } else {
       t += `   (sin datos — editar en Home > GdD)\n`;
     }
+
+    // MQLs por canal (semana anterior, datos cerrados)
+    if (mqlBreakdown && mqlBreakdown.por_origen && mqlBreakdown.por_origen.length > 0) {
+      t += `\n   MQLs por canal (sem anterior · datos cerrados)\n`;
+      mqlBreakdown.por_origen.forEach(ch => {
+        t += `   · ${ch.origen.padEnd(20)} ${String(ch.count).padStart(3)}   ${String(ch.pct).padStart(2)}%\n`;
+      });
+    }
+
     t += `\n`;
   }
+
   // 2. PANORAMA OPERATIVO
   if (an) {
     const spr = an.byPhase["🚧 Sprint"]||0, rev = an.byPhase["👀 Review"]||0;
@@ -114,7 +161,7 @@ export function generateMinuta(wd, analysis, gddData, blockTimes) {
     t += `\n`;
   }
 
-  // 5. CARGA SEMANAL — todo el equipo en 2 columnas
+  // 5. CARGA SEMANAL
   if (an) {
     const all = Object.entries(an.byPersonWeek)
       .filter(([name]) => PERSONAS.some(p => p.name === name && !p.sdr))
@@ -127,12 +174,10 @@ export function generateMinuta(wd, analysis, gddData, blockTimes) {
       const col2 = all.slice(half);
       const maxLen = col1.length;
       for (let i = 0; i < maxLen; i++) {
-        // columna izquierda
         const [p1, d1] = col1[i] || ["", { total: 0, stopped: 0 }];
         const bar1 = p1 ? "█".repeat(Math.min(Math.round((d1.total/maxVal)*8), 8)) + (d1.total > 10 ? "▸" : " ") : "";
         const flag1 = d1.stopped > 0 ? "🚫" : "  ";
         const left = p1 ? `   ${String(i+1).padStart(2)}. ${shortName(p1).padEnd(14)} ${bar1.padEnd(10)} ${String(d1.total).padStart(2)} ${flag1}` : "";
-        // columna derecha
         const [p2, d2] = col2[i] || ["", { total: 0, stopped: 0 }];
         const bar2 = p2 ? "█".repeat(Math.min(Math.round((d2.total/maxVal)*8), 8)) + (d2.total > 10 ? "▸" : " ") : "";
         const flag2 = d2 ? (d2.stopped > 0 ? "🚫" : "  ") : "";
@@ -141,6 +186,29 @@ export function generateMinuta(wd, analysis, gddData, blockTimes) {
       }
       t += `\n`;
     }
+  }
+
+  // 6. ROADMAP
+  const roadmapItems = getSprintRoadmap(items || []);
+  if (roadmapItems.length > 0) {
+    const monthName = new Date(TODAY_STR + 'T12:00:00').toLocaleDateString("es-MX", { month: "long" }).toUpperCase();
+    t += `6. ROADMAP ${monthName}\n`;
+
+    const PHASE_LABELS = { '🚧 Sprint': 'Sprint', '👀 Review': 'Review', '⚙️ Modificación': 'Modificacion' };
+    let currentSquad = '';
+    roadmapItems.forEach(it => {
+      const cv = it.column_values || {};
+      const sqName = normalizeSquad(cv.color_mkz0s203 || '');
+      if (sqName !== currentSquad) {
+        currentSquad = sqName;
+        t += `   ${sqName}\n`;
+      }
+      const deadline = cv.date_mm1b10rx || '';
+      const deadlineLabel = deadline ? new Date(deadline + 'T12:00:00').toLocaleDateString("es-MX", { day: "2-digit", month: "short" }) : '—';
+      const phase = PHASE_LABELS[cv.color_mkz09na] || cv.color_mkz09na || '';
+      t += `   ${deadlineLabel} · ${it.name} — ${shortName(cv.person)} · ${phase}\n`;
+    });
+    t += `\n`;
   }
 
   t += `${LINE}\nWeekly Mkt Corp · ${new Date().toLocaleTimeString("es-MX",{hour:"2-digit",minute:"2-digit"})}\n`;
