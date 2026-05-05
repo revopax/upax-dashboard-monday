@@ -41,7 +41,7 @@ const AuditLogPanel = React.memo(function AuditLogPanel() {
       ) : (
         <div style={{ maxHeight:300, overflowY:"auto" }}>
           {filtered.slice(0, 100).map((entry) => {
-            const col = AUDIT_TYPE_COLORS[entry.tipo] || "var(--tx3)";
+            const col = AUDIT_TYPE_COLORS[entry.tipo] || C.tx3;
             const icon = AUDIT_TYPE_ICONS[entry.tipo] || "•";
             return (
               <div key={entry.id} style={{ display:"flex", gap:8, alignItems:"flex-start", padding:"6px 0", borderBottom:`1px solid ${C.bg3}` }}>

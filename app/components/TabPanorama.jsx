@@ -24,7 +24,7 @@ const TabPanorama = React.memo(function TabPanorama({ analysis: an, items, onDri
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
         <h2 style={{ fontSize: 16, fontWeight: 700 }}>Panorama Semanal</h2>
         <div style={{ display: "flex", gap: 3 }}>
-          {["squads", "alertas"].map((s) => <Chip key={s} label={s.charAt(0).toUpperCase() + s.slice(1)} active={sec === s} color="var(--purple)" onClick={() => setSecPersist(s)} />)}
+          {["squads", "alertas"].map((s) => <Chip key={s} label={s.charAt(0).toUpperCase() + s.slice(1)} active={sec === s} color={C.purple} onClick={() => setSecPersist(s)} />)}
         </div>
       </div>
 
@@ -52,7 +52,7 @@ const TabPanorama = React.memo(function TabPanorama({ analysis: an, items, onDri
                 {(d.phases["🚫 Detenido"] || 0) > 0 && <span style={{ fontSize: 11, fontWeight: 700, color: C.red }}>🚫 {d.phases["🚫 Detenido"]} det.</span>}
               </div>
             </div>
-            <Bar h={14} segs={[{ l: "Spr", v: d.phases["🚧 Sprint"] || 0, c: "var(--yellow)", ph: "🚧 Sprint" }, { l: "Rev", v: d.phases["👀 Review"] || 0, c: "var(--cyan)", ph: "👀 Review" }, { l: "Mod", v: d.phases["⚙️ Modificación"] || 0, c: "var(--purple)", ph: "⚙️ Modificación" }, { l: "Det", v: d.phases["🚫 Detenido"] || 0, c: "var(--red)", ph: "🚫 Detenido" }, { l: "BL", v: d.phases["⏳Backlog"] || 0, c: "var(--bg4)", ph: "⏳Backlog" }]} onSegmentClick={onDrillDown ? (seg) => {
+            <Bar h={14} segs={[{ l: "Spr", v: d.phases["🚧 Sprint"] || 0, c: "var(--yellow)", ph: "🚧 Sprint" }, { l: "Rev", v: d.phases["👀 Review"] || 0, c: C.cyan, ph: "👀 Review" }, { l: "Mod", v: d.phases["⚙️ Modificación"] || 0, c: C.purple, ph: "⚙️ Modificación" }, { l: "Det", v: d.phases["🚫 Detenido"] || 0, c: "var(--red)", ph: "🚫 Detenido" }, { l: "BL", v: d.phases["⏳Backlog"] || 0, c: C.bg4, ph: "⏳Backlog" }]} onSegmentClick={onDrillDown ? (seg) => {
               const filtered = items.filter(it => normalizeSquad(it.column_values?.color_mkz0s203) === sq.name && it.column_values?.color_mkz09na === seg.ph);
               onDrillDown({ phase: `${sq.name} — ${seg.l}`, items: filtered });
             } : undefined} />
@@ -77,10 +77,10 @@ const TabPanorama = React.memo(function TabPanorama({ analysis: an, items, onDri
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", padding: "8px 0", marginTop: 4, borderTop: "1px solid var(--bg4)" }}>
           {[
             { label: "Sprint", color: C.yellow },
-            { label: "Review", color: "var(--cyan)" },
-            { label: "Mod", color: "var(--purple)" },
+            { label: "Review", color: C.cyan },
+            { label: "Mod", color: C.purple },
             { label: "Detenido", color: C.red },
-            { label: "Backlog", color: "var(--bg4)" },
+            { label: "Backlog", color: C.bg4 },
           ].map(p => (
             <span key={p.label} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10, color: C.tx3 }}>
               <span style={{ width: 10, height: 10, borderRadius: 2, background: p.color }} />
@@ -109,11 +109,11 @@ const TabPanorama = React.memo(function TabPanorama({ analysis: an, items, onDri
                   const sq = SQUADS.find((s) => s.name === normalizeSquad(it.column_values?.color_mkz0s203));
                   return (
                     <div key={it.id} style={{ display: "flex", gap: 6, alignItems: "center", padding: "4px 0", borderBottom: "1px solid var(--bg3)", fontSize: 12 }}>
-                      <span style={{ width: 8, height: 8, borderRadius: "50%", background: sq?.color || "var(--tx3)", flexShrink: 0 }} />
+                      <span style={{ width: 8, height: 8, borderRadius: "50%", background: sq?.color || C.tx3, flexShrink: 0 }} />
                       {g.extra && g.extra(it)}
                       <span style={{ flex: 1, color: C.tx, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.name}</span>
                       {g.showSquad
-                        ? <span style={{ fontSize: 10, fontWeight: 700, color: sq?.color || "var(--tx3)", background: (sq?.color || "#888") + "20", borderRadius: 4, padding: "2px 7px", flexShrink: 0 }}>{sq?.name?.split(" ")[0] || "?"}</span>
+                        ? <span style={{ fontSize: 10, fontWeight: 700, color: sq?.color || C.tx3, background: (sq?.color || "#888") + "20", borderRadius: 4, padding: "2px 7px", flexShrink: 0 }}>{sq?.name?.split(" ")[0] || "?"}</span>
                         : <span style={{ color: C.tx3, fontSize: 11 }}>{shortName(it.column_values?.person)}</span>}
                     </div>
                   );
