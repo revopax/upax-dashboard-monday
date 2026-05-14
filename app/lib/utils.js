@@ -9,7 +9,10 @@ const normalizeSquad = _normalizeSquad
 
 export const PERSON_NAMES = PERSONAS.map((p) => p.name);
 
-// Cache module-level para normalizePersonName — evita ~25k comparaciones de string por analisis
+// Cache module-level para normalizePersonName — evita ~25k comparaciones de string por analisis.
+// NOTA TECNICA: Este cache crece indefinidamente durante la vida del modulo (una sesion de browser).
+// En la practica el universo de nombres es ~30 personas, asi que el cache se estabiliza rapido.
+// Si el equipo creciera a >500 personas, considerar un LRU cache o un WeakMap.
 const _nameNormCache = new Map();
 export function normalizePersonName(mondayName) {
   if (!mondayName) return mondayName;

@@ -1,13 +1,16 @@
 'use client'
-import React, { useState, useEffect } from 'react'
-// components/TabHome.jsx — Tab Home + CargaRow
-import { PERSONAS, SQUADS, TODAY } from '../lib/constants'
-import { WEEK, PREV_WEEK, parseTL, daysDiff, shortName, normalizeSquad, isActive, getPersonDetail } from '../lib/utils'
-import { C, TS, R, F } from '../lib/tokens'
+import React, { useState } from 'react'
+// components/TabHome.jsx — Tab Home compositor (sub-componentes en home/)
+import { PERSONAS, SQUADS } from '../lib/constants'
+import { WEEK, shortName, isActive, getPersonDetail } from '../lib/utils'
+import { C, F } from '../lib/tokens'
 import { Chip, Card, PersonDetailView, Accordion } from './ui'
 import { RoadmapTimeline } from './RoadmapTimeline'
+import { GddKpiSection } from './home/GddKpiSection'
+import { MqlChannelSection, GddTrendSection } from './home/GddTrendSection'
+import { SprintStatusSection } from './home/SprintStatusSection'
 
-// CargaRow — fuera de TabHome para evitar re-creación en cada render (P3.8)
+// CargaRow — fuera de TabHome para evitar re-creacion en cada render (P3.8)
 export const CargaRow = React.memo(function CargaRow({ person, d, rank, maxVal, onClick, isExpanded, items }) {
   const pct = maxVal > 0 ? d.total / maxVal : 0;
   const barColor = d.total > 20 ? C.red : d.total > 10 ? C.yellow : C.green;
@@ -27,7 +30,7 @@ export const CargaRow = React.memo(function CargaRow({ person, d, rank, maxVal, 
         <span style={{ fontSize: 13, fontWeight: 600, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{shortName(person)}</span>
         <span className="mobile-hide" style={{ fontSize: 10, color: squadColor, fontWeight: 600, background: squadColor + "15", borderRadius: 4, padding: "1px 6px", flexShrink: 0 }}>{squadShort}</span>
         {d.stopped > 0 && <span style={{ fontSize: 10, color: C.red, fontWeight: 700, flexShrink: 0 }}>{d.stopped}🚫</span>}
-        <div title={`${d.total} de ${maxVal} (máximo del equipo)`} style={{ width: 60, height: 4, background: C.bg4, borderRadius: 3, overflow: "hidden", flexShrink: 0, cursor: "help" }}>
+        <div title={`${d.total} de ${maxVal} (maximo del equipo)`} style={{ width: 60, height: 4, background: C.bg4, borderRadius: 3, overflow: "hidden", flexShrink: 0, cursor: "help" }}>
           <div style={{ width: Math.min(pct * 100, 100) + "%", height: "100%", background: barColor, borderRadius: 3, transition: "width .4s ease" }} />
         </div>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", flexShrink: 0, minWidth: 60 }}>
@@ -46,90 +49,25 @@ export const CargaRow = React.memo(function CargaRow({ person, d, rank, maxVal, 
   );
 });
 
-// MqlChannelList — subcomponente con "ver más" para la lista de canales MQL
-function MqlChannelList({ channels, maxCount, showMax, needsMore, compact }) {
-  const [showAll, setShowAll] = useState(false);
-  const visible = showAll ? channels : channels.slice(0, showMax);
-  const channelColors = [C.blue, C.purple, C.green, C.yellow, C.red, "#FF6B6B", "#4ECDC4", "#45B7D1"];
-  const padding = compact ? "3px 0" : "5px 0";
-  const fontSize = compact ? 11 : 12;
-  const barHeight = compact ? 10 : 14;
-  return (
-    <div>
-      {visible.map((ch, i) => (
-        <div key={ch.origen} style={{ display: "flex", alignItems: "center", gap: 8, padding, borderBottom: i < visible.length - 1 ? "1px solid var(--bg3)" : "none" }}>
-          <span style={{ fontSize, color: C.tx2, flex: "0 0 100px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ch.origen}</span>
-          <div style={{ flex: 1, height: barHeight, background: C.bg3, borderRadius: 4, overflow: "hidden" }}>
-            <div style={{ width: Math.max((ch.count / maxCount) * 100, 4) + "%", height: "100%", background: channelColors[i % channelColors.length], borderRadius: 4, transition: "width .4s ease" }} />
-          </div>
-          <span style={{ fontFamily: F.mono, fontSize: fontSize + 1, fontWeight: 700, color: C.tx, minWidth: 28, textAlign: "right" }}>{ch.count}</span>
-          <span style={{ fontFamily: F.mono, fontSize: 10, color: C.tx3, minWidth: 32, textAlign: "right" }}>{ch.pct}%</span>
-        </div>
-      ))}
-      {needsMore && (
-        <button onClick={() => setShowAll(!showAll)} style={{ fontSize: 10, color: C.blue, background: "none", border: "none", cursor: "pointer", fontWeight: 600, marginTop: 6, padding: 0 }}>
-          {showAll ? "Ver menos ↑" : `+${channels.length - showMax} más ↓`}
-        </button>
-      )}
-    </div>
-  );
-}
-
-// Helper: format date string to short Spanish
-const fmtDate = (s) => {
-  if (!s) return "";
-  const d = new Date(s + "T12:00:00");
-  return isNaN(d) ? s : d.toLocaleDateString("es-MX", { day: "numeric", month: "short" });
-};
-
-const TabHome = React.memo(function TabHome({ analysis: an, items, elapsed, onStart, gddData: propGddData, mqlBreakdown, mqlBreakdownPrev, gddTargets, gddHistory, setGddHistory, gddLoading }) {
+const TabHome = React.memo(function TabHome({ analysis: an, items, elapsed, onStart, gddData, mqlBreakdown, mqlBreakdownPrev, gddTargets, gddHistory, setGddHistory, gddLoading }) {
   const [expandedPerson, setExpandedPerson] = useState(null);
   const [cargaSquad, setCargaSquad] = useState("all");
   const [showAllCarga, setShowAllCarga] = useState(false);
-  const [mqlWeekIdx, setMqlWeekIdx] = useState(-1); // -1 = semana actual
-  const [expandedMonth, setExpandedMonth] = useState(null);
-  const [expandedWeek, setExpandedWeek] = useState(null);
-  // On Mondays (weekly meeting day), default to showing last week's data
-  const [gddWeekView, setGddWeekView] = useState("current");
-  useEffect(() => { if (new Date().getDay() === 1) setGddWeekView("prev"); }, []);
-
-  const gddData = propGddData;
 
   if (!an) return null;
-  const activeCount = (an.byPhase["🚧 Sprint"] || 0) + (an.byPhase["👀 Review"] || 0) + (an.byPhase["⚙️ Modificación"] || 0);
   const activeWeek = (an.byPhaseWeek["🚧 Sprint"] || 0) + (an.byPhaseWeek["👀 Review"] || 0) + (an.byPhaseWeek["⚙️ Modificación"] || 0);
   const TEAM_NAMES = new Set(PERSONAS.map((p) => p.name));
   const sortedPeople = Object.entries(an.byPersonWeek).filter(([name]) => TEAM_NAMES.has(name) && !PERSONAS.find((p) => p.name === name)?.sdr).sort((a, b) => b[1].total - a[1].total);
-
-  // Derive MQL data based on selected week + gddWeekView sync
-  const mqlData = (() => {
-    if (mqlWeekIdx === -1) {
-      // Sync with GdD week toggle: prev week uses mqlBreakdownPrev
-      return gddWeekView === "prev" ? (mqlBreakdownPrev || mqlBreakdown) : mqlBreakdown;
-    }
-    const entry = gddHistory?.[mqlWeekIdx];
-    if (!entry || !entry.por_origen || entry.por_origen.length === 0) return null;
-    return {
-      total: entry.por_origen.reduce((sum, o) => sum + o.count, 0),
-      por_origen: entry.por_origen,
-      breakdown_macro: entry.breakdown_macro || { inbound: 0, outbound: 0, unknown: 0 },
-    };
-  })();
-
-  // Weeks with por_origen data for the selector
-  const weeksWithBreakdown = (gddHistory || [])
-    .map((w, i) => ({ ...w, _idx: i }))
-    .filter(w => Array.isArray(w.por_origen) && w.por_origen.length > 0);
 
   return (
     <div className="fade">
 
       {/* Semaphore */}
-      <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", marginBottom: 12, borderRadius: R.default, background: (an.semaphore || "yellow") === "red" ? "rgba(255,59,48,.08)" : (an.semaphore || "yellow") === "yellow" ? "rgba(255,159,10,.08)" : "rgba(52,199,89,.08)", border: `1px solid ${(an.semaphore || "yellow") === "red" ? "rgba(255,59,48,.2)" : (an.semaphore || "yellow") === "yellow" ? "rgba(255,159,10,.2)" : "rgba(52,199,89,.2)"}` }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", marginBottom: 12, borderRadius: "var(--r)", background: (an.semaphore || "yellow") === "red" ? "rgba(255,59,48,.08)" : (an.semaphore || "yellow") === "yellow" ? "rgba(255,159,10,.08)" : "rgba(52,199,89,.08)", border: `1px solid ${(an.semaphore || "yellow") === "red" ? "rgba(255,59,48,.2)" : (an.semaphore || "yellow") === "yellow" ? "rgba(255,159,10,.2)" : "rgba(52,199,89,.2)"}` }}>
         <span style={{ fontSize: 24 }}>{(an.semaphore || "yellow") === "red" ? "🔴" : (an.semaphore || "yellow") === "yellow" ? "🟡" : "🟢"}</span>
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: (an.semaphore || "yellow") === "red" ? C.red : (an.semaphore || "yellow") === "yellow" ? C.yellow : C.green }}>
-            {(an.semaphore || "yellow") === "red" ? "Temas urgentes que revisar" : (an.semaphore || "yellow") === "yellow" ? "Atención en algunos puntos" : "En control"}
+            {(an.semaphore || "yellow") === "red" ? "Temas urgentes que revisar" : (an.semaphore || "yellow") === "yellow" ? "Atencion en algunos puntos" : "En control"}
           </div>
           <div style={{ fontSize: 11, color: C.tx3, marginTop: 2 }}>{activeWeek} en sprint esta semana · {(an.velocity || {}).done || 0} completados sem. anterior · {(an.velocity || {}).overdue || 0} vencidos</div>
         </div>
@@ -143,454 +81,30 @@ const TabHome = React.memo(function TabHome({ analysis: an, items, elapsed, onSt
           </div>
           <button
             onClick={onStart}
-            style={{ background: C.tx, color: C.bg, border: "none", borderRadius: R.default, padding: "14px 36px", fontSize: 16, fontWeight: 700, cursor: "pointer", letterSpacing: "-0.02em" }}
+            style={{ background: C.tx, color: C.bg, border: "none", borderRadius: "var(--r)", padding: "14px 36px", fontSize: 16, fontWeight: 700, cursor: "pointer", letterSpacing: "-0.02em" }}
           >
             Iniciar Weekly
           </button>
         </Card>
       )}
       {elapsed > 0 && (
-        <div style={{ marginBottom: 12, padding: "8px 14px", borderRadius: R.default, background: "rgba(52,199,89,.06)", border: "1px solid rgba(52,199,89,.2)", display: "flex", alignItems: "center", gap: 10, fontSize: 12 }}>
+        <div style={{ marginBottom: 12, padding: "8px 14px", borderRadius: "var(--r)", background: "rgba(52,199,89,.06)", border: "1px solid rgba(52,199,89,.2)", display: "flex", alignItems: "center", gap: 10, fontSize: 12 }}>
           <span style={{ fontFamily: F.mono, fontWeight: 700, color: C.green }}>{Math.floor(elapsed / 60)}:{String(elapsed % 60).padStart(2, "0")}</span>
           <span style={{ color: C.tx3 }}>Weekly en curso</span>
         </div>
       )}
 
-      {/* GdD boxes — KPIs de generación de demanda */}
-      {(() => {
-        if (gddLoading && !gddData) {
-          return (
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: C.tx3, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8 }}>📊 Generación de Demanda</div>
-              <div className="kpi-grid-mobile" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 8 }}>
-                {[1,2,3,4].map(i => (
-                  <div key={i} style={{ background: C.bg2, border: "1px solid var(--bg4)", borderRadius: R.default, padding: "12px 14px", height: 100, animation: "pulse 1.5s ease-in-out infinite", opacity: 0.5 }} />
-                ))}
-              </div>
-            </div>
-          );
-        }
-        const raw = gddData || { semana: {}, anterior: {}, ytd: {} };
-        // When viewing prev week, swap semana/anterior so the KPIs show last week
-        const showingPrev = gddWeekView === "prev";
-        const d = showingPrev
-          ? { ...raw, semana: raw.anterior, anterior: raw.semana }
-          : raw;
-        const metrics = ["leads", "mqls", "sqls", "opps"];
-        const labels = { leads: "Leads", mqls: "MQLs", sqls: "SQLs", opps: "Opps" };
-        const colors = { leads: C.blue, mqls: C.purple, sqls: C.green, opps: C.yellow };
-        const icons = { leads: "👤", mqls: "⭐", sqls: "🎯", opps: "💼" };
-        const pctChange = (cur, prev) => (!prev || prev === 0) ? null : Math.round(((cur - prev) / prev) * 100);
+      {/* GdD KPIs — sub-componente extraido */}
+      <GddKpiSection gddData={gddData} gddTargets={gddTargets} gddLoading={gddLoading} />
 
-        // Source badge
-        const sourceBadge = (() => {
-          const src = gddData?.source;
-          if (src === "hubspot_live") return <span style={{ background: "rgba(52,199,89,.12)", border: "1px solid #34C759", color: "#34C759", borderRadius: 20, padding: "3px 10px", fontSize: 12, fontWeight: 700, letterSpacing: "0.02em", marginLeft: 6 }}>● LIVE</span>;
-          if (src === "hubspot_partial") return <span style={{ background: "rgba(255,159,10,.12)", border: "1px solid var(--yellow)", color: C.yellow, borderRadius: 20, padding: "3px 10px", fontSize: 12, fontWeight: 700, letterSpacing: "0.02em", marginLeft: 6 }}>PARCIAL</span>;
+      {/* MQLs por Canal — sub-componente extraido */}
+      <MqlChannelSection mqlBreakdown={mqlBreakdown} mqlBreakdownPrev={mqlBreakdownPrev} gddHistory={gddHistory} gddLoading={gddLoading} gddWeekView="current" />
 
-          if (gddLoading && !src) return null;
-          if (src === "empty" || !src) return <span style={{ fontSize: 9, color: C.red, marginLeft: 6 }}>sin datos</span>;
-          return null;
-        })();
+      {/* Tendencia Semanal — sub-componente extraido */}
+      <GddTrendSection gddData={gddData} gddHistory={gddHistory} gddLoading={gddLoading} />
 
-        // Week date label — show correct range based on toggle
-        const weekLabel = (() => {
-          if (!gddData?.fechas?.semana_desde) return null;
-          if (showingPrev) {
-            // Calculate prev week dates from semana_desde
-            const desde = new Date(gddData.fechas.semana_desde + "T12:00:00");
-            const prevDesde = new Date(desde); prevDesde.setDate(desde.getDate() - 7);
-            const prevHasta = new Date(desde); prevHasta.setDate(desde.getDate() - 1);
-            return `${fmtDate(prevDesde.toISOString().slice(0,10))} – ${fmtDate(prevHasta.toISOString().slice(0,10))}`;
-          }
-          return `${fmtDate(gddData.fechas.semana_desde)}${gddData.fechas.semana_hasta ? " – " + fmtDate(gddData.fechas.semana_hasta) : ""}`;
-        })();
-
-        return (
-          <div style={{ marginBottom: 12 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-              <span style={{ fontSize: 12, fontWeight: 700, color: C.tx3, textTransform: "uppercase", letterSpacing: "0.08em" }}>
-                📊 Generación de Demanda{sourceBadge}
-                {weekLabel && <span style={{ fontWeight: 400, marginLeft: 6, color: C.tx3, fontSize: 11 }}>{weekLabel}</span>}
-              </span>
-              <div style={{ display: "flex", gap: 0, border: "1px solid var(--bg4)", borderRadius: 6, overflow: "hidden" }}>
-                <button onClick={() => setGddWeekView("prev")} style={{ fontSize: 10, padding: "3px 8px", background: showingPrev ? C.blue : C.bg2, color: showingPrev ? "#fff" : C.tx3, border: "none", cursor: "pointer", fontWeight: 600, fontFamily: "inherit" }}>Sem. anterior</button>
-                <button onClick={() => setGddWeekView("current")} style={{ fontSize: 10, padding: "3px 8px", background: !showingPrev ? C.blue : C.bg2, color: !showingPrev ? "#fff" : C.tx3, border: "none", cursor: "pointer", fontWeight: 600, fontFamily: "inherit" }}>Esta semana</button>
-              </div>
-            </div>
-            <div className="kpi-grid-mobile" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 8, marginBottom: 4 }}>
-              {metrics.map((m) => {
-                const rawCur = d.semana?.[m];
-                const isNoData = rawCur === null || rawCur === undefined;
-                const cur = rawCur || 0;
-                const prev = d.anterior?.[m] || 0;
-                const pct = pctChange(cur, prev);
-                const col = colors[m];
-                const mesVal = (gddData?.mes || {})[m] || 0;
-                return (
-                  <div key={m} style={{ background: C.bg2, border: "1px solid var(--bg4)", borderRadius: R.default, padding: "12px 14px", position: "relative", overflow: "hidden" }}>
-                    <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: isNoData ? C.bg4 : (pct !== null && pct < 0) ? C.red : (pct !== null && pct >= 0) ? C.green : col }} />
-                    <div style={{ position: "absolute", top: 8, right: 10, fontSize: 18, opacity: 0.06 }}>{icons[m]}</div>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: C.tx3, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 6 }}>{labels[m]}</div>
-                    <div style={{ fontFamily: F.mono, fontSize: 32, fontWeight: 800, color: isNoData ? C.tx3 : C.tx, opacity: isNoData ? 0.4 : 1, lineHeight: 1, letterSpacing: "-0.04em" }}>{cur.toLocaleString()}</div>
-                    {d.semana?.[`${m}_mkt`] != null && d.semana?.[`${m}_com`] != null && (
-                      <div style={{ fontSize: 10, marginTop: 3, color: C.tx3, fontFamily: F.mono }}>
-                        <span style={{ color: C.blue }}>Mkt:{d.semana[`${m}_mkt`]}</span>{" | "}
-                        <span style={{ color: C.purple }}>Com:{d.semana[`${m}_com`]}</span>
-                      </div>
-                    )}
-                    {isNoData && <div style={{ fontSize: 9, color: C.tx3, marginTop: 2, fontStyle: "italic" }}>sin datos</div>}
-                    {pct !== null && !showingPrev && (
-                      <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 6, paddingTop: 6, borderTop: "1px solid var(--bg4)" }}>
-                        <span style={{ fontSize: 11, fontWeight: 700, color: pct >= 0 ? C.green : C.red }}>{pct >= 0 ? "▲" : "▼"}{Math.abs(pct)}%</span>
-                        <span style={{ fontSize: 10, color: C.tx3 }}>vs sem. ant.</span>
-                      </div>
-                    )}
-                    {mesVal > 0 && (
-                      <div style={{ marginTop: 5, paddingTop: 4, borderTop: "1px solid var(--bg4)", fontSize: 10, color: C.tx3 }}>
-                        <span style={{ color: C.tx2, fontWeight: 700, fontFamily: F.mono }}>{mesVal.toLocaleString()}</span> acum. mes
-                      </div>
-                    )}
-                    {(() => {
-                      const target = gddTargets?.targets?.[m] || 0;
-                      if (target <= 0) return null;
-                      const pctTarget = Math.min((mesVal / target) * 100, 100);
-                      const targetColor = pctTarget >= 90 ? C.green : pctTarget >= 60 ? C.yellow : C.red;
-                      return (
-                        <div style={{ marginTop: 4 }}>
-                          <div style={{ height: 2, background: C.bg4, borderRadius: 1, overflow: "hidden" }}>
-                            <div style={{ width: pctTarget + "%", height: "100%", background: targetColor, borderRadius: 1, transition: "width .4s ease" }} />
-                          </div>
-                          <div style={{ fontSize: 9, color: C.tx3, marginTop: 2, fontFamily: F.mono }}>
-                            {mesVal}/{target} meta mes
-                          </div>
-                        </div>
-                      );
-                    })()}
-                  </div>
-                );
-              })}
-            </div>
-            {(() => {
-              const pt = d.semana?.pipeline_total || 0;
-              const pm = d.semana?.pipeline_mkt || 0;
-              const pc = d.semana?.pipeline_com || 0;
-              if (pt <= 0) return null;
-              const fmtM = (v) => v >= 1000000 ? `$${(v/1000000).toFixed(1)}M` : v >= 1000 ? `$${(v/1000).toFixed(0)}K` : `$${v}`;
-              return (
-                <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 14px", background: C.bg2, border: "1px solid var(--bg4)", borderRadius: R.default, marginTop: 4, marginBottom: 4 }}>
-                  <span style={{ fontSize: 16 }}>🏦</span>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: C.tx2 }}>Pipeline</span>
-                  <span style={{ fontFamily: F.mono, fontSize: 18, fontWeight: 800, color: C.tx }}>{fmtM(pt)}</span>
-                  <span style={{ fontSize: 10, color: C.tx3, fontFamily: F.mono }}>
-                    <span style={{ color: C.blue }}>Mkt {fmtM(pm)}</span>{" | "}
-                    <span style={{ color: C.purple }}>Com {fmtM(pc)}</span>
-                  </span>
-                </div>
-              );
-            })()}
-            {(() => {
-              const ytd = gddData?.ytd || {};
-              const sem = d.semana || {};
-              const rates = [
-                { label: "Lead→MQL", from: sem.leads ?? ytd.leads, to: sem.mqls ?? ytd.mqls },
-                { label: "MQL→SQL", from: sem.mqls ?? ytd.mqls, to: sem.sqls ?? ytd.sqls },
-                { label: "SQL→OPP", from: sem.sqls ?? ytd.sqls, to: sem.opps ?? ytd.opps },
-              ].map(r => ({ ...r, pct: r.from > 0 ? ((r.to / r.from) * 100).toFixed(1) : null, warn: r.from > 0 && r.to > r.from }));
-              if (rates.every(r => r.pct === null)) return null;
-              return (
-                <div style={{ display: "flex", gap: 16, justifyContent: "center", padding: "8px 0 4px", fontSize: 11, fontFamily: F.mono, color: C.tx3 }}>
-                  {rates.filter(r => r.pct !== null).map(r => (
-                    <span key={r.label}>{r.label}: <span style={{ fontWeight: 700, color: r.warn ? C.yellow : C.tx2 }}>{r.pct}%{r.warn ? " ⚠" : ""}</span></span>
-                  ))}
-                </div>
-              );
-            })()}
-            {gddData?.lastUpdate && <div style={{ fontSize: 10, color: C.tx3, textAlign: "right" }}>Actualizado: {gddData.lastUpdate}</div>}
-          </div>
-        );
-      })()}
-
-      {/* MQLs por Canal — con selector de semana */}
-      <Accordion title="📊 MQLs por Canal" defaultOpen={false}>
-      {(() => {
-        if (gddLoading) {
-          return (
-            <Card style={{ marginBottom: 12 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: C.tx3, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 12 }}>📊 MQLs por Canal</div>
-              {[1,2,3,4].map(i => (
-                <div key={i} style={{ height: 28, background: C.bg3, borderRadius: 6, marginBottom: 6, animation: "pulse 1.5s ease-in-out infinite", opacity: 0.5 }} />
-              ))}
-            </Card>
-          );
-        }
-        if (!mqlData || !mqlData.por_origen || mqlData.por_origen.length === 0) return null;
-        const { total, por_origen, breakdown_macro } = mqlData;
-        const inb = breakdown_macro?.inbound || 0;
-        const outb = breakdown_macro?.outbound || 0;
-        const unk = breakdown_macro?.unknown || 0;
-        const macroTotal = inb + outb + unk || 1;
-        const maxCount = por_origen[0]?.count || 1;
-        const showMax = 8;
-        const needsMore = por_origen.length > showMax;
-
-        // Selected week label
-        const selectedLabel = mqlWeekIdx === -1
-          ? "Semana actual"
-          : `${fmtDate(gddHistory[mqlWeekIdx]?.semana_desde)} – ${fmtDate(gddHistory[mqlWeekIdx]?.semana_hasta || gddHistory[mqlWeekIdx]?.semana_desde)}`;
-
-        return (
-          <Card style={{ marginBottom: 12 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-              <span style={{ fontSize: 12, fontWeight: 700, color: C.tx3, textTransform: "uppercase", letterSpacing: "0.08em" }}>
-                📊 MQLs por Canal
-                {mqlWeekIdx === -1 && gddWeekView === "prev" && !mqlBreakdownPrev && mqlBreakdown && (
-                  <span style={{ fontSize: 9, color: C.yellow, fontWeight: 600, marginLeft: 6, textTransform: "none", letterSpacing: 0 }}>(datos sem. actual)</span>
-                )}
-              </span>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                {/* Week selector */}
-                {weeksWithBreakdown.length > 0 && (
-                  <select
-                    value={mqlWeekIdx}
-                    onChange={e => setMqlWeekIdx(Number(e.target.value))}
-                    style={{ fontSize: 10, padding: "3px 6px", borderRadius: 4, border: "1px solid var(--bg4)", background: C.bg2, color: C.tx2, cursor: "pointer", fontFamily: "inherit" }}
-                  >
-                    <option value={-1}>Semana actual</option>
-                    {weeksWithBreakdown.map(w => (
-                      <option key={w._idx} value={w._idx}>
-                        {fmtDate(w.semana_desde)} – {fmtDate(w.semana_hasta || w.semana_desde)}
-                      </option>
-                    ))}
-                  </select>
-                )}
-                <span style={{ fontFamily: F.mono, fontSize: 18, fontWeight: 800, color: C.purple }}>{total}</span>
-              </div>
-            </div>
-            {/* Barra macro Inbound / Outbound */}
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ display: "flex", height: 22, borderRadius: 6, overflow: "hidden", background: C.bg3 }}>
-                {inb > 0 && (
-                  <div style={{ width: (inb / macroTotal * 100) + "%", background: C.green, display: "flex", alignItems: "center", justifyContent: "center", transition: "width .4s ease" }}>
-                    <span style={{ fontSize: 10, fontWeight: 700, color: "#fff", whiteSpace: "nowrap" }}>{inb} Inbound</span>
-                  </div>
-                )}
-                {outb > 0 && (
-                  <div style={{ width: (outb / macroTotal * 100) + "%", background: C.blue, display: "flex", alignItems: "center", justifyContent: "center", transition: "width .4s ease" }}>
-                    <span style={{ fontSize: 10, fontWeight: 700, color: "#fff", whiteSpace: "nowrap" }}>{outb} Outbound</span>
-                  </div>
-                )}
-                {unk > 0 && (
-                  <div style={{ width: (unk / macroTotal * 100) + "%", background: C.tx3, display: "flex", alignItems: "center", justifyContent: "center", transition: "width .4s ease" }}>
-                    <span style={{ fontSize: 10, fontWeight: 700, color: "#fff", whiteSpace: "nowrap" }}>{unk}</span>
-                  </div>
-                )}
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4, fontSize: 10, color: C.tx3 }}>
-                <span><span style={{ display: "inline-block", width: 8, height: 8, borderRadius: 2, background: C.green, marginRight: 4, verticalAlign: "middle" }} />Inbound {Math.round(inb / macroTotal * 100)}%</span>
-                <span><span style={{ display: "inline-block", width: 8, height: 8, borderRadius: 2, background: C.blue, marginRight: 4, verticalAlign: "middle" }} />Outbound {Math.round(outb / macroTotal * 100)}%</span>
-              </div>
-            </div>
-            {/* Lista de canales */}
-            <MqlChannelList channels={por_origen} maxCount={maxCount} showMax={showMax} needsMore={needsMore} />
-          </Card>
-        );
-      })()}
-      </Accordion>
-
-      {/* Tendencia Semanal GDD — agrupado por mes */}
-      <Accordion title="📈 Tendencia Semanal" defaultOpen={false}>
-      {(() => {
-        if (gddLoading || !gddHistory || gddHistory.length === 0) return null;
-        const metrics = ["leads", "mqls", "sqls", "opps"];
-        const labels = { leads: "Leads", mqls: "MQLs", sqls: "SQLs", opps: "Opps" };
-        const arrow = (cur, prev) => {
-          if (prev === undefined || prev === null) return null;
-          if (cur > prev) return { symbol: "▲", color: C.green };
-          if (cur < prev) return { symbol: "▼", color: C.red };
-          return { symbol: "–", color: C.tx3 };
-        };
-
-        const byMonth = {};
-        gddHistory.forEach((w, i) => {
-          const key = (w.semana_desde || w.id || "").slice(0, 7);
-          if (!key || key.length < 7) return;
-          if (!byMonth[key]) byMonth[key] = [];
-          byMonth[key].push({ ...w, _globalIdx: i });
-        });
-        const monthKeys = Object.keys(byMonth).sort().reverse();
-
-        const monthLabelFn = (mKey) => {
-          const d = new Date(mKey + "-15T12:00:00");
-          const s = d.toLocaleDateString("es-MX", { month: "long", year: "numeric" });
-          return s.charAt(0).toUpperCase() + s.slice(1);
-        };
-
-        const calcTotals = (weeks) => weeks.reduce((acc, w) => ({
-          leads: acc.leads + (w.leads || 0),
-          mqls: acc.mqls + (w.mqls || 0),
-          sqls: acc.sqls + (w.sqls || 0),
-          opps: acc.opps + (w.opps || 0),
-        }), { leads: 0, mqls: 0, sqls: 0, opps: 0 });
-
-        const globalTotals = calcTotals(gddHistory);
-
-        return (
-          <Card style={{ marginBottom: 12 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: C.tx3, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>
-              📈 Tendencia Semanal
-            </div>
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, fontFamily: F.mono }}>
-                <thead>
-                  <tr>
-                    <th style={{ textAlign: "left", padding: "6px 8px", fontSize: 10, color: C.tx3, fontWeight: 700, borderBottom: "1px solid var(--bg4)" }}>Semana</th>
-                    {metrics.map(m => (
-                      <th key={m} style={{ textAlign: "right", padding: "6px 8px", fontSize: 10, color: C.tx3, fontWeight: 700, borderBottom: "1px solid var(--bg4)" }}>{labels[m]}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {monthKeys.map((mKey, mi) => {
-                    const weeks = byMonth[mKey];
-                    const isMonthExpanded = mi === 0 || expandedMonth === mKey;
-                    const mTotals = calcTotals(weeks);
-
-                    return (
-                      <React.Fragment key={mKey}>
-                        <tr
-                          onClick={() => { setExpandedMonth(isMonthExpanded && mi !== 0 ? null : mKey); setExpandedWeek(null); }}
-                          style={{ cursor: "pointer", background: C.bg2 }}
-                          onMouseEnter={e => e.currentTarget.style.background = C.bg3}
-                          onMouseLeave={e => e.currentTarget.style.background = C.bg2}
-                        >
-                          <td style={{ padding: "8px 8px", fontSize: 12, fontWeight: 700, color: C.tx, borderBottom: "1px solid var(--bg4)" }}>
-                            <span style={{ fontSize: 9, marginRight: 6, color: C.tx3, display: "inline-block", transform: isMonthExpanded ? "rotate(90deg)" : "none", transition: "transform .2s" }}>▶</span>
-                            {monthLabelFn(mKey)}
-                            <span style={{ fontSize: 10, fontWeight: 400, color: C.tx3, marginLeft: 6 }}>{weeks.length} sem.</span>
-                          </td>
-                          {metrics.map(m => (
-                            <td key={m} style={{ textAlign: "right", padding: "8px 8px", fontSize: 11, fontWeight: 700, color: isMonthExpanded ? C.tx3 : C.tx2, borderBottom: "1px solid var(--bg4)" }}>
-                              {mTotals[m].toLocaleString()}
-                            </td>
-                          ))}
-                        </tr>
-                        {isMonthExpanded && weeks.map((w, wi) => {
-                          const isFirst = w.semana_desde === gddData?.fechas?.semana_desde;
-                          const prev = weeks[wi + 1];
-                          const weekKey = w.id || w._globalIdx;
-                          const isWeekExpanded = expandedWeek === weekKey;
-                          const hasPorOrigen = Array.isArray(w.por_origen) && w.por_origen.length > 0;
-                          return (
-                            <React.Fragment key={weekKey}>
-                              <tr
-                                onClick={() => hasPorOrigen && setExpandedWeek(isWeekExpanded ? null : weekKey)}
-                                style={{
-                                  background: isFirst ? "rgba(0,122,255,.06)" : "transparent",
-                                  cursor: hasPorOrigen ? "pointer" : "default",
-                                  transition: "background .15s",
-                                }}
-                                onMouseEnter={e => { if (hasPorOrigen && !isFirst) e.currentTarget.style.background = C.bg3 }}
-                                onMouseLeave={e => { if (!isFirst) e.currentTarget.style.background = "transparent" }}
-                              >
-                                <td style={{ padding: "6px 8px 6px 24px", fontSize: 11, color: isFirst ? C.blue : C.tx2, fontWeight: isFirst ? 700 : 400, borderBottom: isWeekExpanded ? "none" : "1px solid var(--bg4)", whiteSpace: "nowrap" }}>
-                                  {hasPorOrigen && <span style={{ fontSize: 8, marginRight: 4, color: C.tx3, display: "inline-block", transform: isWeekExpanded ? "rotate(90deg)" : "none", transition: "transform .2s" }}>▶</span>}
-                                  {fmtDate(w.semana_desde)}
-                                  {isFirst && <span style={{ fontSize: 9, marginLeft: 4, color: C.blue, fontWeight: 700 }}>actual</span>}
-                                </td>
-                                {metrics.map(m => {
-                                  const val = w[m] || 0;
-                                  const a = prev ? arrow(val, prev[m] || 0) : null;
-                                  return (
-                                    <td key={m} style={{ textAlign: "right", padding: "6px 8px", borderBottom: isWeekExpanded ? "none" : "1px solid var(--bg4)", fontWeight: isFirst ? 700 : 400, color: isFirst ? C.tx : C.tx2 }}>
-                                      {val.toLocaleString()}
-                                      {a && <span style={{ fontSize: 9, marginLeft: 3, color: a.color, fontWeight: 700 }}>{a.symbol}</span>}
-                                    </td>
-                                  );
-                                })}
-                              </tr>
-                              {isWeekExpanded && hasPorOrigen && (
-                                <tr>
-                                  <td colSpan={5} style={{ padding: "0 8px 8px 24px", borderBottom: "1px solid var(--bg4)" }}>
-                                    <div style={{ display: "flex", gap: 12, marginBottom: 6, fontSize: 10, color: C.tx3 }}>
-                                      {w.breakdown_macro && (
-                                        <>
-                                          <span><span style={{ display: "inline-block", width: 6, height: 6, borderRadius: 2, background: C.green, marginRight: 3, verticalAlign: "middle" }} />Inbound: {w.breakdown_macro.inbound || 0}</span>
-                                          <span><span style={{ display: "inline-block", width: 6, height: 6, borderRadius: 2, background: C.blue, marginRight: 3, verticalAlign: "middle" }} />Outbound: {w.breakdown_macro.outbound || 0}</span>
-                                        </>
-                                      )}
-                                    </div>
-                                    <MqlChannelList
-                                      channels={w.por_origen}
-                                      maxCount={w.por_origen[0]?.count || 1}
-                                      showMax={5}
-                                      needsMore={w.por_origen.length > 5}
-                                      compact
-                                    />
-                                  </td>
-                                </tr>
-                              )}
-                            </React.Fragment>
-                          );
-                        })}
-                      </React.Fragment>
-                    );
-                  })}
-                  <tr style={{ background: C.bg2, borderTop: "2px solid var(--bg4)" }}>
-                    <td style={{ padding: "10px 8px", fontSize: 12, fontWeight: 800, color: C.tx }}>Total</td>
-                    {metrics.map(m => (
-                      <td key={m} style={{ textAlign: "right", padding: "10px 8px", fontSize: 13, fontWeight: 800, color: C.tx }}>
-                        {globalTotals[m].toLocaleString()}
-                      </td>
-                    ))}
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </Card>
-        );
-      })()}
-      </Accordion>
-
-      {/* Estado Sprint — KPIs operativos */}
-      <Accordion title="Estado del Sprint" defaultOpen={false}>
-      {/* KPIs operativos con comparativos */}
-      {(() => {
-        const thisMonthStart = new Date(TODAY.getFullYear(), TODAY.getMonth(), 1);
-        const doneThisMonth = items.filter(it => {
-          const fer = it.column_values?.date_mkzchmsq;
-          if (!fer || it.column_values?.color_mkz09na !== "✅ Done") return false;
-          const d = new Date(fer);
-          return d >= thisMonthStart && d <= TODAY;
-        }).length;
-
-        const overdueCount = (an.overdue || []).length;
-        const detCount = an.byPhase["🚫 Detenido"] || 0;
-        const doneCount = (an.doneLastWeek || []).length;
-
-        const KPIop = (label, val, color, line1, line2, icon) => (
-          <div style={{ background: C.bg2, border: "1px solid var(--bg4)", borderRadius: R.default, padding: "14px 16px", position: "relative", overflow: "hidden" }}>
-            <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: color }} />
-            <div style={{ position: "absolute", top: 8, right: 12, fontSize: 18, opacity: 0.07 }}>{icon}</div>
-            <div style={{ fontSize: 10, fontWeight: 700, color: C.tx3, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 6 }}>{label}</div>
-            <div style={{ fontFamily: F.mono, fontSize: 36, fontWeight: 800, color, lineHeight: 1, letterSpacing: "-0.05em", marginBottom: 6 }}>{val}</div>
-            <div style={{ paddingTop: 6, borderTop: "1px solid var(--bg4)" }}>
-              {line1 && <div style={{ fontSize: 11, color: C.tx3, lineHeight: 1.4 }}>{line1}</div>}
-              {line2 && <div style={{ fontSize: 11, color: C.tx3, lineHeight: 1.4, marginTop: 2 }}>{line2}</div>}
-            </div>
-          </div>
-        );
-
-        return (
-          <div className="kpi-grid-mobile" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 8, marginBottom: 16 }}>
-            {KPIop("Esta semana", activeWeek, C.blue, `${activeCount} activos total`, `${activeCount - activeWeek} fuera de semana`, "⚡")}
-            {KPIop("Vencidos", overdueCount, overdueCount > 0 ? C.red : C.green, overdueCount > 0 ? `${(an.overdue || []).filter(it => { const tl = parseTL(it.column_values?.timerange_mkzcqv0j); return tl.end && daysDiff(TODAY, tl.end) > 7; }).length} con más de 7 días` : "Al día ✓", `${(an.backlogWithDates||[]).length} en backlog con fecha`, "⏰")}
-            {KPIop("Detenidos", detCount, detCount > 0 ? C.yellow : C.green, detCount > 0 ? `${(an.stoppedWeek||[]).length} con fecha esta semana` : "Sin bloqueos ✓", `${(an.noResp||[]).length} sin responsable`, "🚫")}
-            {KPIop("Done sem.", doneCount, doneCount > 0 ? C.green : C.tx3, `${PREV_WEEK.start.toLocaleDateString("es-MX",{day:"numeric",month:"short"})} – ${PREV_WEEK.end.toLocaleDateString("es-MX",{day:"numeric",month:"short"})}`, `${doneThisMonth} este mes · ${an.doneTotal||0} total`, "✅")}
-          </div>
-        );
-      })()}
-      </Accordion>
+      {/* Estado Sprint — sub-componente extraido */}
+      <SprintStatusSection analysis={an} items={items} />
 
       {/* Carga — tabla compacta de todo el equipo */}
       <Accordion title="👥 Carga del Equipo" count={sortedPeople.length} defaultOpen={false}>

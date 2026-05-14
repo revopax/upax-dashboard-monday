@@ -1,6 +1,8 @@
 'use client'
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 // components/TabFocos.jsx
+// MONITOREO DE TAMANIO: Este archivo debe mantenerse por debajo de 400 lineas.
+// Si crece mas, extraer la seccion Cross-Squad a components/CrossSquadView.jsx.
 import { SQUADS, PHASES, TODAY } from '../lib/constants'
 import { parseTL, daysDiff, shortName, normalizeSquad, isActive, isOverdue, overlapsThisWeek, normalizeFocos } from '../lib/utils'
 import { C, TS, R, F } from '../lib/tokens'
