@@ -155,10 +155,12 @@ export async function GET(request) {
       return { ...item, column_values: cv, subitems }
     })
 
+    const MAX_PAGES = 15
     return NextResponse.json({
       items: normalized,
       groups: board.groups || [],
       total: normalized.length,
+      truncated: page >= MAX_PAGES && cursor != null,
       ts: new Date().toISOString(),
     }, {
       headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate' }

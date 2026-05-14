@@ -1,12 +1,9 @@
 import { NextResponse } from 'next/server'
+import { validateAuth } from '../_auth'
 
 export async function POST(request) {
-  // Validar autorización para operaciones de escritura
-  const authHeader = request.headers.get('authorization')
-  const expected = `Bearer ${process.env.API_SECRET}`
-  if (!process.env.API_SECRET || !authHeader || authHeader !== expected) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const authErr = validateAuth(request)
+  if (authErr) return authErr
 
   try {
     const SLACK_CHANNEL = process.env.SLACK_CHANNEL

@@ -1,6 +1,9 @@
 'use client'
 import React, { useState, useEffect } from 'react'
 // components/TabCompromisos.jsx
+// MONITOREO DE TAMANIO: Este archivo debe mantenerse por debajo de 400 lineas.
+// Si crece mas, extraer la logica de sync a Monday a lib/commitment-actions.js
+// y el formulario de nuevo compromiso a components/CommitmentForm.jsx.
 import { TODAY_STR, STORE_KEY } from '../lib/constants'
 import { shortName, pctColor } from '../lib/utils'
 import { storeGet, storeSet, storeList } from '../lib/storage'

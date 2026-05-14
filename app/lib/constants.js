@@ -2,7 +2,11 @@
 // lib/constants.js — config del equipo, board y agenda
 // Solo contiene DATOS y CONSTANTES. Funciones utilitarias viven en utils.js.
 
-export const BOARD_ID = 18044324200;
+// BOARD_ID: lee de env var NEXT_PUBLIC_MONDAY_BOARD_ID si existe, con fallback al valor por defecto.
+// En Vercel, configurar NEXT_PUBLIC_MONDAY_BOARD_ID = 18044324200 (debe coincidir con MONDAY_BOARD_ID).
+export const BOARD_ID = typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_MONDAY_BOARD_ID
+  ? Number(process.env.NEXT_PUBLIC_MONDAY_BOARD_ID)
+  : 18044324200;
 export const GROUP_DELIVERY = "group_mm15cfz2"; // único grupo de trabajo
 export const GROUP_ACUERDOS = "group_mm1mhsd1"; // para crear compromisos de weekly
 // SLACK_GENERAL_CHANNEL removido — se usa process.env.SLACK_CHANNEL en /api/slack (server-side only)
@@ -59,6 +63,12 @@ export const AGENDA = [
   { id: "cierre",     label: "Compromisos y Cierre",  fixed: "Víctor + Franco", start: 50, dur: 10, color: "#8E8E93", tab: "compromisos" },
 ];
 
+// PERSONAS — lista completa del equipo de Mkt Corporativo.
+// MANTENIMIENTO: cuando alguien entra o sale del equipo, actualizar AMBOS:
+//   1. Este array (agregar/quitar la persona con su squad)
+//   2. app/lib/server-constants.js > MONDAY_USERS (agregar/quitar el Monday user ID)
+// Los SDRs (sdr: true) no aparecen en la carga semanal pero si en la lista general.
+// Las estrellas (star: true) son lideres de squad o roles clave.
 export const PERSONAS = [
   { name: "Franco Cruzat",           squad: "CMO",                    star: true },
   { name: "Víctor Tzili",            squad: "PMO",                    star: true },

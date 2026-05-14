@@ -71,6 +71,12 @@ const GDD_EMPTY = {
  * - HubSpot (via /api/gdd-hubspot): Leads, MQLs, SQLs, OPPs con split mkt/com
  * - HubSpot (via /api/hubspot-mqls): Desglose de MQLs por origen/canal
  * - Upstash (via /api/storage): Historial semanal
+ *
+ * SIDE-EFFECT IMPORTANTE: Este hook AUTO-GUARDA en gdd_history (Upstash) cuando:
+ * 1. HubSpot retorna datos validos (source !== 'empty')
+ * 2. Los datos de la semana actual o anterior cambiaron >5% respecto al historial
+ * Esto asegura que el historial se mantenga actualizado sin intervencion manual.
+ * El guardado ocurre una sola vez por mount (controlado por fetchedRef).
  */
 export function useGDDData() {
   const [gddData, setGddData] = useState(null)
@@ -96,7 +102,7 @@ export function useGDDData() {
           if (!data.error) hubspotData = data
         }
       } catch (err) {
-        console.warn('GdD HubSpot fetch error:', err.message)
+        if (process.env.NODE_ENV === 'development') console.warn('GdD HubSpot fetch error:', err.message)
       }
 
       const finalData = hubspotData || GDD_EMPTY
@@ -192,7 +198,7 @@ export function useGDDData() {
       }
 
     } catch (err) {
-      console.error('useGDDData error:', err.message)
+      if (process.env.NODE_ENV === 'development') console.error('useGDDData error:', err.message)
       setError(err.message)
       setGddData(GDD_EMPTY)
     } finally {

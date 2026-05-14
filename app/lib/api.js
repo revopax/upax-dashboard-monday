@@ -19,7 +19,7 @@ export async function fetchAllItems() {
     if (data.error) throw new Error(data.error)
     return data.items || []
   } catch (e) {
-    console.error('fetchAllItems error:', e)
+    if (process.env.NODE_ENV === 'development') console.error('fetchAllItems error:', e)
     return []
   }
 }

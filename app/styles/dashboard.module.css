@@ -1,0 +1,142 @@
+/* dashboard.module.css — Apple Modern Light design system
+ * Migrado desde app/lib/css.js (template literal CSS-in-JS)
+ * css.js se mantiene como fuente canonica por retrocompatibilidad.
+ * Este archivo se puede usar en componentes nuevos via CSS Modules.
+ *
+ * NOTA: La app actualmente inyecta CSS via <style>{CSS}</style> en Dashboard.jsx.
+ * Para migrar completamente, se requiere:
+ * 1. Importar este module en cada componente que use las clases
+ * 2. Reemplazar className strings por styles.className
+ * 3. Eliminar <style>{CSS}</style> de Dashboard.jsx
+ * Esto es un cambio de alto riesgo — hacer en sprint dedicado.
+ */
+
+/* Fonts loaded via next/font in layout.js */
+* { box-sizing: border-box; margin: 0; }
+
+:root {
+  --bg: #FAFAFA;
+  --bg2: #FFFFFF;
+  --bg3: #F2F2F7;
+  --bg4: #E5E5EA;
+  --tx: #1D1D1F;
+  --tx2: #3A3A3C;
+  --tx3: #6E6E73;
+  --border: #D1D1D6;
+  --red: #FF3B30;
+  --green: #34C759;
+  --yellow: #FF9F0A;
+  --orange: #FF9500;
+  --blue: #007AFF;
+  --purple: #AF52DE;
+  --cyan: #5AC8FA;
+  --pink: #FF2D55;
+  --shadow: 0 1px 3px rgba(0, 0, 0, .06), 0 2px 8px rgba(0, 0, 0, .04);
+  --mono: var(--font-mono, 'JetBrains Mono', monospace);
+  --sans: var(--font-sans, 'Inter', -apple-system, BlinkMacSystemFont, sans-serif);
+  --r: 14px;
+  --r-sm: 10px;
+  --r-lg: 18px;
+  --ts-2xs: 9px;
+  --ts-xs: 10px;
+  --ts-sm: 11px;
+  --ts-base: 12px;
+  --ts-md: 13px;
+  --ts-lg: 14px;
+  --ts-xl: 17px;
+  --ts-display: 28px;
+  --ts-hero: 36px;
+  --r-2xs: 3px;
+  --r-xs: 6px;
+  --r-full: 9999px;
+  --s-1: 4px;
+  --s-2: 6px;
+  --s-3: 8px;
+  --s-4: 10px;
+  --s-5: 12px;
+  --s-6: 16px;
+  --s-7: 20px;
+  --s-8: 24px;
+  --s-10: 32px;
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+  --fw-heavy: 800;
+  --shadow-lg: 0 4px 12px rgba(0, 0, 0, .08), 0 8px 24px rgba(0, 0, 0, .06);
+}
+
+.fade {
+  animation: fadeIn .3s ease both;
+}
+
+.stickyNav {
+  position: sticky;
+  top: 0;
+  z-index: 90;
+  background: var(--bg);
+  border-bottom: 1px solid var(--bg4);
+  padding: 0 20px;
+  margin: 0 -20px;
+  box-shadow: 0 1px 0 var(--bg4), 0 4px 12px rgba(0, 0, 0, .04);
+  scrollbar-width: none;
+}
+
+.stickyNav::-webkit-scrollbar { display: none; }
+
+.presenterMode { --ps: 1.25; }
+.presenterMode .fade { transform: scale(var(--ps)); transform-origin: top left; }
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .3; } }
+@keyframes liveDot { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.8); opacity: .4; } }
+@keyframes glowPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(52, 199, 89, .35); } 50% { box-shadow: 0 0 0 14px rgba(52, 199, 89, 0); } }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+@media (max-width: 640px) {
+  .stickyNav button { padding: 8px 10px; font-size: 11px; }
+  .stickyNav {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 0 8px;
+    margin: 0 -8px;
+    -webkit-mask-image: linear-gradient(to right, #000 85%, transparent);
+    mask-image: linear-gradient(to right, #000 85%, transparent);
+  }
+  .mobileStack { flex-direction: column !important; }
+  .mobileHide { display: none !important; }
+  .mobileOnly { display: block !important; }
+  .mobileFull { width: 100% !important; min-width: 0 !important; }
+  .kpiGridMobile { grid-template-columns: repeat(2, 1fr) !important; }
+  .compromisosRow { grid-template-columns: 26px 1fr 80px 50px !important; }
+  .compromisosRow > *:nth-child(4) { display: none !important; }
+  .compromisosRow > *:nth-child(6) { display: none !important; }
+}
+
+@media (max-width: 480px) {
+  .mobileXsHide { display: none !important; }
+  .compromisosRow { grid-template-columns: 26px 1fr 50px !important; }
+  .compromisosRow > *:nth-child(3) { display: none !important; }
+}
+
+button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+select:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+input:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+textarea:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .fade { animation: none !important; }
+  * { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+}
