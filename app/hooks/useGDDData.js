@@ -144,19 +144,29 @@ export function useGDDData() {
 
       const currentHistory = histResult.status === 'fulfilled' && Array.isArray(histResult.value) ? histResult.value : []
 
+      // Resolve MQL breakdown data for auto-save enrichment
+      const mqlCurrentData = mqlCurrent.status === 'fulfilled' ? mqlCurrent.value : null
+      const mqlPrevData = mqlPrev.status === 'fulfilled' ? mqlPrev.value : null
+
       // Auto-save current + previous week to history if HubSpot returned data
       if (hubspotData && hubspotData.fechas?.semana_desde && hubspotData.source !== 'empty') {
         const prevWeek = getPrevWeekDates(hubspotData.fechas.semana_desde)
         const weeksToSave = [
-          { wsd: hubspotData.fechas.semana_desde, wsh: hubspotData.fechas.semana_hasta, sem: hubspotData.semana },
-          { wsd: prevWeek.semana_desde, wsh: prevWeek.semana_hasta, sem: hubspotData.anterior },
+          { wsd: hubspotData.fechas.semana_desde, wsh: hubspotData.fechas.semana_hasta, sem: hubspotData.semana, mqlBd: mqlCurrentData },
+          { wsd: prevWeek.semana_desde, wsh: prevWeek.semana_hasta, sem: hubspotData.anterior, mqlBd: mqlPrevData },
         ]
         let historyChanged = false
 
-        for (const { wsd, wsh, sem } of weeksToSave) {
+        for (const { wsd, wsh, sem, mqlBd } of weeksToSave) {
           if (!wsd || !sem) continue
           const hasData = (sem.leads || 0) + (sem.mqls || 0) + (sem.sqls || 0) + (sem.opps || 0) > 0
           if (!hasData) continue
+
+          // Include por_origen from MQL breakdown if available
+          const mqlFields = mqlBd ? {
+            por_origen: (mqlBd.por_origen || []).map(o => ({ origen: o.origen, count: o.count, pct: o.pct })),
+            breakdown_macro: mqlBd.breakdown_macro || { inbound: 0, outbound: 0, unknown: 0 },
+          } : {}
 
           const makeFields = () => ({
             leads: sem.leads || 0, mqls: sem.mqls || 0, sqls: sem.sqls || 0, opps: sem.opps || 0,
@@ -165,6 +175,7 @@ export function useGDDData() {
             sqls_mkt: sem.sqls_mkt || 0, sqls_com: sem.sqls_com || 0,
             opps_mkt: sem.opps_mkt || 0, opps_com: sem.opps_com || 0,
             pipeline_total: sem.pipeline_total || 0, pipeline_mkt: sem.pipeline_mkt || 0, pipeline_com: sem.pipeline_com || 0,
+            ...mqlFields,
             guardado_en: new Date().toISOString(), auto: true,
           })
 
@@ -179,7 +190,9 @@ export function useGDDData() {
               if (ov === 0) return true
               return Math.abs((nv - ov) / ov) > 0.05
             })
-            if (changed) {
+            // Also update if existing entry lacks por_origen but we now have it
+            const needsMqlEnrich = mqlBd && (!Array.isArray(existing.por_origen) || existing.por_origen.length === 0)
+            if (changed || needsMqlEnrich) {
               Object.assign(existing, makeFields())
               historyChanged = true
             }

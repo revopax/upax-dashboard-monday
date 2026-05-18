@@ -1,5 +1,5 @@
 'use client'
-import React, { useState } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { C, R, F } from '../../lib/tokens'
 import { Card, Accordion } from '../ui'
 
@@ -43,6 +43,46 @@ function MqlChannelList({ channels, maxCount, showMax, needsMore, compact }) {
  */
 export const MqlChannelSection = React.memo(function MqlChannelSection({ mqlBreakdown, mqlBreakdownPrev, gddHistory, gddLoading, gddWeekView }) {
   const [mqlWeekIdx, setMqlWeekIdx] = useState(-1)
+  const [liveFetch, setLiveFetch] = useState(null) // { data, loading, weekKey }
+  const liveFetchRef = useRef(null)
+
+  // When a historical week has no por_origen, fetch live from HubSpot
+  useEffect(() => {
+    if (mqlWeekIdx === -1) { setLiveFetch(null); return }
+    const entry = gddHistory?.[mqlWeekIdx]
+    if (!entry) { setLiveFetch(null); return }
+    const hasPorOrigen = Array.isArray(entry.por_origen) && entry.por_origen.length > 0
+    if (hasPorOrigen) { setLiveFetch(null); return }
+
+    const sd = entry.semana_desde || entry.id
+    const sh = entry.semana_hasta || sd
+    if (!sd) { setLiveFetch(null); return }
+
+    const weekKey = `${sd}_${sh}`
+    // Avoid re-fetching same week
+    if (liveFetchRef.current === weekKey) return
+    liveFetchRef.current = weekKey
+
+    setLiveFetch({ data: null, loading: true, weekKey })
+
+    const authHeaders = process.env.NEXT_PUBLIC_API_SECRET
+      ? { 'Authorization': `Bearer ${process.env.NEXT_PUBLIC_API_SECRET}` } : {}
+
+    fetch(`/api/hubspot-mqls?semana_desde=${encodeURIComponent(sd)}&semana_hasta=${encodeURIComponent(sh)}`, {
+      headers: authHeaders, cache: 'no-store',
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (d && !d.error) {
+          setLiveFetch({ data: d, loading: false, weekKey })
+        } else {
+          setLiveFetch({ data: null, loading: false, weekKey })
+        }
+      })
+      .catch(() => setLiveFetch({ data: null, loading: false, weekKey }))
+
+    return () => { liveFetchRef.current = null }
+  }, [mqlWeekIdx, gddHistory])
 
   const mqlData = (() => {
     if (mqlWeekIdx === -1) {
@@ -50,10 +90,29 @@ export const MqlChannelSection = React.memo(function MqlChannelSection({ mqlBrea
     }
     const entry = gddHistory?.[mqlWeekIdx]
     if (!entry) return null
-    const porOrigen = Array.isArray(entry.por_origen) ? entry.por_origen : []
+    const hasPorOrigen = Array.isArray(entry.por_origen) && entry.por_origen.length > 0
+
+    // Use stored por_origen if available
+    if (hasPorOrigen) {
+      return {
+        total: entry.por_origen.reduce((sum, o) => sum + o.count, 0),
+        por_origen: entry.por_origen,
+        breakdown_macro: entry.breakdown_macro || { inbound: 0, outbound: 0, unknown: 0 },
+      }
+    }
+
+    // Use live fetch data if available
+    if (liveFetch?.data) {
+      return liveFetch.data
+    }
+
+    // Still loading live data
+    if (liveFetch?.loading) return '__loading__'
+
+    // No data at all — show entry mqls count as fallback
     return {
-      total: porOrigen.reduce((sum, o) => sum + o.count, 0),
-      por_origen: porOrigen,
+      total: entry.mqls || 0,
+      por_origen: [],
       breakdown_macro: entry.breakdown_macro || { inbound: 0, outbound: 0, unknown: 0 },
     }
   })()
@@ -75,6 +134,14 @@ export const MqlChannelSection = React.memo(function MqlChannelSection({ mqlBrea
         )
       }
       if (!mqlData) return null
+      if (mqlData === '__loading__') {
+        return (
+          <Card style={{ marginBottom: 12 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: C.tx3, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 12 }}>📊 MQLs por Canal</div>
+            <div style={{ fontSize: 11, color: C.tx3, padding: "12px 0" }}>Cargando datos de HubSpot...</div>
+          </Card>
+        )
+      }
       const { total, por_origen, breakdown_macro } = mqlData
       const inb = breakdown_macro?.inbound || 0
       const outb = breakdown_macro?.outbound || 0

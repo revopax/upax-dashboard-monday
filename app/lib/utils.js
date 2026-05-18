@@ -76,7 +76,7 @@ export function isOverdue(it) {
 export function isActive(ph) { return ["🚧 Sprint", "👀 Review", "⚙️ Modificación"].includes(ph); }
 
 export function getWeekBounds() {
-  const now = new Date(TODAY_STR);
+  const now = new Date(TODAY_STR + 'T12:00:00');
   const day = now.getDay();
   const mon = new Date(now);
   if (day === 0) mon.setDate(now.getDate() - 6);
@@ -88,7 +88,7 @@ export function getWeekBounds() {
 export const WEEK = getWeekBounds();
 
 export function getPrevWeekBounds() {
-  const now = new Date(TODAY_STR);
+  const now = new Date(TODAY_STR + 'T12:00:00');
   const day = now.getDay();
   const lastMon = new Date(now);
   lastMon.setDate(now.getDate() - (day === 0 ? 6 : day - 1));
