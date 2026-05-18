@@ -49,17 +49,17 @@ export const MqlChannelSection = React.memo(function MqlChannelSection({ mqlBrea
       return gddWeekView === "prev" ? (mqlBreakdownPrev || mqlBreakdown) : mqlBreakdown
     }
     const entry = gddHistory?.[mqlWeekIdx]
-    if (!entry || !entry.por_origen || entry.por_origen.length === 0) return null
+    if (!entry) return null
+    const porOrigen = Array.isArray(entry.por_origen) ? entry.por_origen : []
     return {
-      total: entry.por_origen.reduce((sum, o) => sum + o.count, 0),
-      por_origen: entry.por_origen,
+      total: porOrigen.reduce((sum, o) => sum + o.count, 0),
+      por_origen: porOrigen,
       breakdown_macro: entry.breakdown_macro || { inbound: 0, outbound: 0, unknown: 0 },
     }
   })()
 
   const weeksWithBreakdown = (gddHistory || [])
     .map((w, i) => ({ ...w, _idx: i }))
-    .filter(w => Array.isArray(w.por_origen) && w.por_origen.length > 0)
 
   return (
     <Accordion title="📊 MQLs por Canal" defaultOpen={false}>
@@ -74,7 +74,7 @@ export const MqlChannelSection = React.memo(function MqlChannelSection({ mqlBrea
           </Card>
         )
       }
-      if (!mqlData || !mqlData.por_origen || mqlData.por_origen.length === 0) return null
+      if (!mqlData) return null
       const { total, por_origen, breakdown_macro } = mqlData
       const inb = breakdown_macro?.inbound || 0
       const outb = breakdown_macro?.outbound || 0
