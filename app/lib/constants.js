@@ -31,6 +31,7 @@ export const SQUADS = [
   { id: "revops",      name: "RevOps & Analytics",       color: "#0A84FF", lead: "César" },
   { id: "portafolio",  name: "Portafolio y Ecosistema",  color: "#FF2D97", lead: "David" },
   { id: "outbound",    name: "Outbound y Pipeline",      color: "#FFD60A", lead: "Ileana" },
+  { id: "politico",    name: "Político-Electoral",        color: "#64D2FF", lead: "Angel Toledano" },
 ];
 
 export const SQUAD_ALIASES = {
@@ -59,8 +60,9 @@ export const AGENDA = [
   { id: "revops",     label: "RevOps",                squad: true,              start: 25, dur: 5,  color: "#0A84FF", tab: "focos", sq: "revops" },
   { id: "portafolio", label: "Portafolio",            squad: true,              start: 30, dur: 5,  color: "#FF2D97", tab: "focos", sq: "portafolio" },
   { id: "outbound",   label: "Outbound",              squad: true,              start: 35, dur: 5,  color: "#FFD60A", tab: "focos", sq: "outbound" },
-  { id: "cross",      label: "Cross-Squad",           fixed: "Líderes",         start: 40, dur: 10, color: "#A855F7", tab: "focos", sq: "cross" },
-  { id: "cierre",     label: "Compromisos y Cierre",  fixed: "Víctor + Franco", start: 50, dur: 10, color: "#8E8E93", tab: "compromisos" },
+  { id: "politico",   label: "Político-Electoral",    squad: true,              start: 40, dur: 5,  color: "#64D2FF", tab: "focos", sq: "politico" },
+  { id: "cross",      label: "Cross-Squad",           fixed: "Líderes",         start: 45, dur: 10, color: "#A855F7", tab: "focos", sq: "cross" },
+  { id: "cierre",     label: "Compromisos y Cierre",  fixed: "Víctor + Franco", start: 55, dur: 10, color: "#8E8E93", tab: "compromisos" },
 ];
 
 // PERSONAS — lista completa del equipo de Mkt Corporativo.
@@ -80,7 +82,6 @@ export const PERSONAS = [
   { name: "Efraín Maciel",            squad: "Inbound Studio" },
   { name: "Iris Múgica",             squad: "Performance y Conversión", star: true },
   { name: "Fernando Borges",         squad: "Performance y Conversión" },
-  { name: "Carolina Belaunzarán",    squad: "Performance y Conversión" },
   { name: "Marco Antonio Juárez",    squad: "Performance y Conversión" },
   { name: "Diana Cruz",              squad: "Performance y Conversión" },
   { name: "Santiago Arango",         squad: "Performance y Conversión" },
@@ -88,7 +89,6 @@ export const PERSONAS = [
   { name: "Adrián González",         squad: "RevOps & Analytics" },
   { name: "Diego Luna",              squad: "RevOps & Analytics" },
   { name: "David Porchini",          squad: "Portafolio y Ecosistema", star: true },
-  { name: "Cyndi Pérez",             squad: "Portafolio y Ecosistema" },
   { name: "Carolina Rojas",          squad: "Portafolio y Ecosistema" },
   { name: "Sergio Franco",           squad: "Portafolio y Ecosistema" },
   { name: "Tairi Medina",            squad: "Portafolio y Ecosistema" },
@@ -99,6 +99,7 @@ export const PERSONAS = [
   { name: "Leodegario",              squad: "Outbound y Pipeline",    sdr: true },
   { name: "Aliosha",                 squad: "Outbound y Pipeline",    sdr: true },
   { name: "Elizabeth Gómez",         squad: "Outbound y Pipeline",    sdr: true },
+  { name: "Angel Toledano",          squad: "Político-Electoral",     star: true },
 ];
 
 // MONDAY_USERS movido a lib/server-constants.js — IDs no deben estar en el bundle del frontend

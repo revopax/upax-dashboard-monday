@@ -92,15 +92,17 @@ export function Alerta({ icon, text, color = C.yellow }) {
   );
 }
 
-export function PersonSelect({ value, onChange, style = {} }) {
+export function PersonSelect({ value, onChange, style = {}, squad }) {
   const [open, setOpen] = useState(false);
   const [filter, setFilter] = useState("");
   const [activeIdx, setActiveIdx] = useState(-1);
   const ref = useRef(null);
   const listRef = useRef(null);
-  const groups = [...new Set(PERSONAS.map((p) => p.squad))];
+  // Si se pasa `squad`, el selector solo muestra personas de ese squad.
+  const pool = squad ? PERSONAS.filter((p) => p.squad === squad) : PERSONAS;
+  const groups = [...new Set(pool.map((p) => p.squad))];
   const lf = filter.toLowerCase();
-  const filtered = lf ? PERSONAS.filter(p => p.name.toLowerCase().includes(lf) || p.squad.toLowerCase().includes(lf)) : PERSONAS;
+  const filtered = lf ? pool.filter(p => p.name.toLowerCase().includes(lf) || p.squad.toLowerCase().includes(lf)) : pool;
   const filteredGroups = groups.filter(g => filtered.some(p => p.squad === g));
   // Flat list for keyboard nav
   const flatList = filteredGroups.flatMap(g => filtered.filter(p => p.squad === g));
@@ -316,6 +318,39 @@ export function SquadInputSection({ label, icon, field, placeholder, rows, draft
           <input type="date" value={draft[field + "_cuando"] || ""} onChange={(e) => updateDraft(field + "_cuando", e.target.value)} style={{ background: C.bg, border: "1px solid var(--bg4)", borderRadius: 6, padding: "3px 6px", fontSize: 10, color: C.tx, outline: "none" }} />
         </div>
       )}
+    </div>
+  );
+}
+
+// RepeatableItems — lista de items editables (cada uno se guarda por separado).
+// withMeta=true agrega owner (PersonSelect) y fecha por item (para Blocker/Necesito).
+export function RepeatableItems({ icon, label, placeholder, items, onChange, withMeta }) {
+  const list = items && items.length ? items : [{ text: "" }];
+  const update = (i, patch) => onChange(list.map((it, idx) => (idx === i ? { ...it, ...patch } : it)));
+  const add = () => onChange([...list, { text: "" }]);
+  const remove = (i) => { const next = list.filter((_, idx) => idx !== i); onChange(next.length ? next : [{ text: "" }]); };
+  return (
+    <div style={{ marginBottom: 12 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+        <span style={{ fontSize: 13 }}>{icon}</span>
+        <span style={{ fontSize: 12, fontWeight: 700, color: C.tx2, textTransform: "uppercase", letterSpacing: "0.05em" }}>{label}</span>
+      </div>
+      {list.map((it, i) => (
+        <div key={i} style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 6, flexWrap: "wrap" }}>
+          <input
+            value={it.text || ""}
+            onChange={(e) => update(i, { text: e.target.value })}
+            placeholder={placeholder}
+            style={{ flex: "1 1 200px", minWidth: 140, background: C.bg, border: "1.5px solid var(--bg4)", borderRadius: 8, padding: "8px 10px", fontSize: 13, fontFamily: F.sans, color: C.tx, outline: "none", boxSizing: "border-box" }}
+            onFocus={(e) => { e.target.style.borderColor = C.blue; }}
+            onBlur={(e) => { e.target.style.borderColor = C.bg4; }}
+          />
+          {withMeta && <PersonSelect value={it.quien || ""} onChange={(e) => update(i, { quien: e.target.value })} style={{ flex: "0 0 auto", fontSize: 11 }} />}
+          {withMeta && <input type="date" value={it.cuando || ""} onChange={(e) => update(i, { cuando: e.target.value })} style={{ background: C.bg, border: "1px solid var(--bg4)", borderRadius: 6, padding: "6px", fontSize: 10, color: C.tx, outline: "none" }} />}
+          {list.length > 1 && <button type="button" onClick={() => remove(i)} aria-label="Quitar item" style={{ background: "none", border: "none", color: C.tx3, cursor: "pointer", fontSize: 14, padding: "0 4px", lineHeight: 1 }}>✕</button>}
+        </div>
+      ))}
+      <button type="button" onClick={add} style={{ background: "none", border: "none", color: C.blue, cursor: "pointer", fontSize: 11, fontWeight: 600, padding: "2px 0" }}>+ agregar {label.toLowerCase()}</button>
     </div>
   );
 }

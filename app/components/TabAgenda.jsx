@@ -24,7 +24,7 @@ const TabAgenda = React.memo(function TabAgenda({ wd, setWd, save, currentIdx, b
                 <div key={b.id} style={{ display: "flex", alignItems: "center", gap: 6 }}>
                   <span style={{ width: 8, height: 8, borderRadius: "50%", background: b.color, flexShrink: 0 }} />
                   <span style={{ fontSize: 11, fontWeight: 600, minWidth: 80 }}>{b.label}</span>
-                  <PersonSelect value={pr[b.id] || ""} onChange={(e) => setPr(b.id, e.target.value)} style={{ flex: 1 }} />
+                  <PersonSelect value={pr[b.id] || ""} onChange={(e) => setPr(b.id, e.target.value)} squad={SQUADS.find((s) => s.id === b.sq)?.name} style={{ flex: 1 }} />
                 </div>
               ))}
             </div>
@@ -60,7 +60,7 @@ const TabAgenda = React.memo(function TabAgenda({ wd, setWd, save, currentIdx, b
             <div style={{ width: 3, height: 22, borderRadius: R.sm, background: isCur ? b.color : isPast ? `${b.color}40` : C.bg4 }} />
             <span style={{ minWidth: 120, fontWeight: isCur ? 700 : 500, fontSize: 13, color: isCur ? C.tx : C.tx2 }}>{b.label}</span>
             {edit && b.squad
-              ? <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 6 }}><PersonSelect value={pr[b.id] || ""} onChange={(e) => setPr(b.id, e.target.value)} style={{ flex: 1 }} /><span style={{ fontSize: 10, color: C.tx3 }}>Lead: {sq?.lead}</span></div>
+              ? <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 6 }}><PersonSelect value={pr[b.id] || ""} onChange={(e) => setPr(b.id, e.target.value)} squad={sq?.name} style={{ flex: 1 }} /><span style={{ fontSize: 10, color: C.tx3 }}>Lead: {sq?.lead}</span></div>
               : <span style={{ flex: 1, fontSize: 12, color: C.tx3 }}>{b.squad ? (pr[b.id] ? <><span style={{ color: b.color, fontWeight: 600 }}>{pr[b.id]}</span> · {sq?.lead}</> : <span style={{ color: C.red }}>Sin asignar · {sq?.lead}</span>) : b.fixed}</span>}
             <span style={{ fontFamily: F.mono, color: C.tx3, fontSize: 11 }}>
               {blockTimes?.[b.id] ? <span style={{ color: blockTimes[b.id] > b.dur * 60 ? C.red : C.green }}>{Math.floor(blockTimes[b.id] / 60)}:{String(blockTimes[b.id] % 60).padStart(2, "0")}</span> : `${b.dur}'`}

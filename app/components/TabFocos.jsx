@@ -1,12 +1,12 @@
 'use client'
-import React, { useState, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 // components/TabFocos.jsx
 // MONITOREO DE TAMANIO: Este archivo debe mantenerse por debajo de 400 lineas.
 // Si crece mas, extraer la seccion Cross-Squad a components/CrossSquadView.jsx.
 import { SQUADS, PHASES, TODAY } from '../lib/constants'
 import { parseTL, daysDiff, shortName, normalizeSquad, isActive, isOverdue, overlapsThisWeek, normalizeFocos } from '../lib/utils'
 import { C, TS, R, F } from '../lib/tokens'
-import { Chip, Card, SquadInputSection } from './ui'
+import { Chip, Card, RepeatableItems } from './ui'
 
 const TabFocos = React.memo(function TabFocos({ items, wd, setWd, save, activeSquad, setActiveSquad }) {
   const focos = wd.focos || {};
@@ -35,25 +35,39 @@ const TabFocos = React.memo(function TabFocos({ items, wd, setWd, save, activeSq
   useEffect(() => { setDraft({}); setSaved(false); setEditIdx(null); setConfirmDelIdx(null); setShowForm(false); }, [activeSquad]);
 
   const updateDraft = useCallback((field, val) => setDraft((prev) => ({ ...prev, [field]: val })), []);
-  const hasDraft = !!(draft.focos?.trim() || draft.blocker?.trim() || draft.necesito?.trim());
+  const listHas = (l) => Array.isArray(l) && l.some((it) => it.text?.trim());
+  const hasDraft = listHas(draft.focosList) || listHas(draft.blockerList) || listHas(draft.necesitoList);
+
+  // Cada foco/blocker/necesito se guarda como su propio entry en el array del
+  // squad (shape legacy → compatible con minuta y MinutaDetailView sin migrar).
+  const buildEntries = (d) => {
+    const out = [];
+    const ts = Date.now();
+    (d.focosList || []).forEach((it) => { if (it.text?.trim()) out.push({ focos: it.text.trim(), ts }); });
+    (d.blockerList || []).forEach((it) => { if (it.text?.trim()) out.push({ blocker: it.text.trim(), blocker_quien: it.quien || "", blocker_cuando: it.cuando || "", ts }); });
+    (d.necesitoList || []).forEach((it) => { if (it.text?.trim()) out.push({ necesito: it.text.trim(), necesito_quien: it.quien || "", necesito_cuando: it.cuando || "", ts }); });
+    return out;
+  };
 
   const saveDraft = () => {
     if (!hasDraft) return;
+    const built = buildEntries(draft);
     let newEntries;
-    if (editIdx !== null) { newEntries = [...entries]; newEntries[editIdx] = { ...draft, ts: Date.now() }; setEditIdx(null); }
-    else newEntries = [...entries, { ...draft, ts: Date.now() }];
+    if (editIdx !== null) { newEntries = [...entries]; newEntries.splice(editIdx, 1, ...built); setEditIdx(null); }
+    else newEntries = [...entries, ...built];
     const n = { ...wd, focos: { ...wd.focos, [activeSquad]: newEntries } };
     setWd(n); save(n); setDraft({}); setShowForm(false); setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
   const deleteEntry = (idx) => { const n = { ...wd, focos: { ...wd.focos, [activeSquad]: entries.filter((_, i) => i !== idx) } }; setWd(n); save(n); };
-  const editEntry = (idx) => { setDraft(entries[idx]); setEditIdx(idx); setShowForm(true); };
-
-  const draftRef = useRef(updateDraft);
-  draftRef.current = updateDraft;
-  // Eliminado anti-patrón: useMemo con JSON.stringify como dep
-  // JSON.stringify en cada render es más costoso que sin memo
-  const stableDraft = draft;
+  const editEntry = (idx) => {
+    const e = entries[idx];
+    const d = { focosList: [], blockerList: [], necesitoList: [] };
+    if (e.focos?.trim()) d.focosList.push({ text: e.focos });
+    if (e.blocker?.trim()) d.blockerList.push({ text: e.blocker, quien: e.blocker_quien || "", cuando: e.blocker_cuando || "" });
+    if (e.necesito?.trim()) d.necesitoList.push({ text: e.necesito, quien: e.necesito_quien || "", cuando: e.necesito_cuando || "" });
+    setDraft(d); setEditIdx(idx); setShowForm(true);
+  };
 
   return (
     <div className="fade">
@@ -103,8 +117,8 @@ const TabFocos = React.memo(function TabFocos({ items, wd, setWd, save, activeSq
           </Card>
           <Card style={{ borderTop: "3px solid var(--purple)", marginTop: 10 }}>
             <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8 }}>Agregar item cross-squad</div>
-            <SquadInputSection label="Blocker" icon="🚫" field="blocker" placeholder="Blocker que afecta a varios squads..." rows={1} draft={draft} updateDraft={updateDraft} showMeta />
-            <SquadInputSection label="Necesito" icon="🤝" field="necesito" placeholder="Necesidad cross-squad..." rows={1} draft={draft} updateDraft={updateDraft} showMeta />
+            <RepeatableItems icon="🚫" label="Blocker" placeholder="Blocker que afecta a varios squads..." items={draft.blockerList} onChange={(items) => updateDraft("blockerList", items)} withMeta />
+            <RepeatableItems icon="🤝" label="Necesito" placeholder="Necesidad cross-squad..." items={draft.necesitoList} onChange={(items) => updateDraft("necesitoList", items)} withMeta />
             <div style={{ display: "flex", gap: 6, alignItems: "center", justifyContent: "flex-end" }}>
               {saved && <span style={{ fontSize: 11, color: C.green, fontWeight: 600 }}>✓ Guardado</span>}
               <button onClick={saveDraft} disabled={!hasDraft} style={{ background: hasDraft ? C.tx : C.bg4, color: hasDraft ? C.bg : C.tx3, border: "none", borderRadius: 8, padding: "8px 20px", fontSize: 12, fontWeight: 700, cursor: hasDraft ? "pointer" : "default" }}>
@@ -160,9 +174,9 @@ const TabFocos = React.memo(function TabFocos({ items, wd, setWd, save, activeSq
             )}
             {(showForm || editIdx !== null || entries.length === 0) && (
               <div style={{ padding: entries.length > 0 ? "10px 0 0" : 0, borderTop: entries.length > 0 ? "1px dashed var(--bg4)" : "none" }}>
-                <SquadInputSection label="Focos" icon="🎯" field="focos" placeholder="Ej: Lanzamiento campaña Verano, planner DOOH, blogs marca Mayo" rows={3} draft={draft} updateDraft={updateDraft} />
-                <SquadInputSection label="Blocker" icon="🚫" field="blocker" placeholder="Ej: Espero brief de UDN MS para finalizar landing" rows={1} draft={draft} updateDraft={updateDraft} showMeta />
-                <SquadInputSection label="Necesito" icon="🤝" field="necesito" placeholder="Ej: Performance, ajustar trackers de campaña X" rows={1} draft={draft} updateDraft={updateDraft} showMeta />
+                <RepeatableItems icon="🎯" label="Focos" placeholder="Ej: Lanzamiento campaña Verano" items={draft.focosList} onChange={(items) => updateDraft("focosList", items)} />
+                <RepeatableItems icon="🚫" label="Blocker" placeholder="Ej: Espero brief de UDN MS para finalizar landing" items={draft.blockerList} onChange={(items) => updateDraft("blockerList", items)} withMeta />
+                <RepeatableItems icon="🤝" label="Necesito" placeholder="Ej: Performance, ajustar trackers de campaña X" items={draft.necesitoList} onChange={(items) => updateDraft("necesitoList", items)} withMeta />
                 <div style={{ display: "flex", gap: 6, alignItems: "center", justifyContent: "flex-end" }}>
                   {saved && <span style={{ fontSize: 11, color: C.green, fontWeight: 600 }}>✓ Guardado</span>}
                   {editIdx !== null && <span onClick={() => { setDraft({}); setEditIdx(null); }} style={{ fontSize: 11, color: C.tx3, cursor: "pointer" }}>Cancelar</span>}
@@ -191,7 +205,7 @@ const TabFocos = React.memo(function TabFocos({ items, wd, setWd, save, activeSq
                     onClick={() => {
                       setDraft(prev => ({
                         ...prev,
-                        focos: (prev.focos ? prev.focos + "\n" : "") + it.name
+                        focosList: [...(prev.focosList || []).filter(x => x.text?.trim()), { text: it.name }]
                       }));
                       setShowForm(true);
                     }}

@@ -10,7 +10,7 @@ export const MONDAY_USERS = {
   "Marco Antonio Juárez": 69017925, "Diana Cruz": 70199066,
   "Santiago Arango": 77820047, "César Mejía": 67757625,
   "Adrián González": 77017562, "Diego Luna": 76944156,
-  "David Porchini": 65476492, "Cyndi Pérez": 67054348,
+  "David Porchini": 65476492,
   "Carolina Rojas": 72959487, "Sergio Franco": 70061556,
   "Tairi Medina": 67627150, "Ileana Cruz": 65476115,
   "Elizabeth Gómez": 76801151,
