@@ -201,6 +201,31 @@ export function getSprintRoadmap(items) {
     return dy === year && dm === month + 1
   })
 
+  return sortBySquadThenDeadline(filtered)
+}
+
+// Roadmap filter for an arbitrary date range: active phases with deadline
+// (date_mm1b10rx) inside [startDate, endDate], grouped/sorted by squad.
+// Used by the Gantt when the user picks a cadence/range; getSprintRoadmap
+// stays as the fixed current-month variant for the weekly minute.
+export function getRoadmapInRange(items, startDate, endDate) {
+  const ACTIVE_PHASES = ['🚧 Sprint', '👀 Review', '⚙️ Modificación']
+  const startMs = startDate.getTime()
+  const endMs = endDate.getTime()
+
+  const filtered = items.filter(it => {
+    const cv = it.column_values || {}
+    const deadline = cv.date_mm1b10rx
+    if (!ACTIVE_PHASES.includes(cv.color_mkz09na) || !deadline) return false
+    const [dy, dm, dd] = deadline.split('-').map(Number)
+    const dlMs = new Date(dy, dm - 1, dd, 12, 0, 0).getTime()
+    return dlMs >= startMs && dlMs <= endMs
+  })
+
+  return sortBySquadThenDeadline(filtered)
+}
+
+function sortBySquadThenDeadline(filtered) {
   const SQUAD_ORDER = SQUADS.map(s => s.name)
   filtered.sort((a, b) => {
     const sqA = SQUAD_ORDER.indexOf(normalizeSquad(a.column_values?.color_mkz0s203 || ''))
@@ -210,6 +235,5 @@ export function getSprintRoadmap(items) {
     if (orderA !== orderB) return orderA - orderB
     return (a.column_values?.date_mm1b10rx || '').localeCompare(b.column_values?.date_mm1b10rx || '')
   })
-
   return filtered
 }
