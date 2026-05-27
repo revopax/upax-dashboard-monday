@@ -64,7 +64,9 @@ export const GddKpiSection = React.memo(function GddKpiSection({ gddData, gddTar
     <div style={{ marginBottom: 12 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
         <span style={{ fontSize: 12, fontWeight: 700, color: C.tx3, textTransform: "uppercase", letterSpacing: "0.08em" }}>
-          📊 Generacion de Demanda{sourceBadge}
+          📊 Generacion de Demanda
+          <span style={{ fontWeight: 700, color: C.blue, marginLeft: 6 }}>(solo MKT)</span>
+          {sourceBadge}
           {weekLabel && <span style={{ fontWeight: 400, marginLeft: 6, color: C.tx3, fontSize: 11 }}>{weekLabel}</span>}
         </span>
         <div style={{ display: "flex", gap: 0, border: "1px solid var(--bg4)", borderRadius: 6, overflow: "hidden" }}>
@@ -87,12 +89,6 @@ export const GddKpiSection = React.memo(function GddKpiSection({ gddData, gddTar
               <div style={{ position: "absolute", top: 8, right: 10, fontSize: 18, opacity: 0.06 }}>{icons[m]}</div>
               <div style={{ fontSize: 10, fontWeight: 700, color: C.tx3, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 6 }}>{labels[m]}</div>
               <div style={{ fontFamily: F.mono, fontSize: 32, fontWeight: 800, color: isNoData ? C.tx3 : C.tx, opacity: isNoData ? 0.4 : 1, lineHeight: 1, letterSpacing: "-0.04em" }}>{cur.toLocaleString()}</div>
-              {d.semana?.[`${m}_mkt`] != null && d.semana?.[`${m}_com`] != null && (
-                <div style={{ fontSize: 10, marginTop: 3, color: C.tx3, fontFamily: F.mono }}>
-                  <span style={{ color: C.blue }}>Mkt:{d.semana[`${m}_mkt`]}</span>{" | "}
-                  <span style={{ color: C.purple }}>Com:{d.semana[`${m}_com`]}</span>
-                </div>
-              )}
               {isNoData && <div style={{ fontSize: 9, color: C.tx3, marginTop: 2, fontStyle: "italic" }}>sin datos</div>}
               {pct !== null && !showingPrev && (
                 <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 6, paddingTop: 6, borderTop: "1px solid var(--bg4)" }}>
@@ -128,8 +124,6 @@ export const GddKpiSection = React.memo(function GddKpiSection({ gddData, gddTar
       {/* Pipeline row */}
       {(() => {
         const pt = d.semana?.pipeline_total || 0
-        const pm = d.semana?.pipeline_mkt || 0
-        const pc = d.semana?.pipeline_com || 0
         if (pt <= 0) return null
         const fmtM = (v) => v >= 1000000 ? `$${(v/1000000).toFixed(1)}M` : v >= 1000 ? `$${(v/1000).toFixed(0)}K` : `$${v}`
         return (
@@ -137,10 +131,7 @@ export const GddKpiSection = React.memo(function GddKpiSection({ gddData, gddTar
             <span style={{ fontSize: 16 }}>🏦</span>
             <span style={{ fontSize: 12, fontWeight: 700, color: C.tx2 }}>Pipeline</span>
             <span style={{ fontFamily: F.mono, fontSize: 18, fontWeight: 800, color: C.tx }}>{fmtM(pt)}</span>
-            <span style={{ fontSize: 10, color: C.tx3, fontFamily: F.mono }}>
-              <span style={{ color: C.blue }}>Mkt {fmtM(pm)}</span>{" | "}
-              <span style={{ color: C.purple }}>Com {fmtM(pc)}</span>
-            </span>
+            <span style={{ fontSize: 10, color: C.tx3, fontFamily: F.mono }}>solo MKT</span>
           </div>
         )
       })()}

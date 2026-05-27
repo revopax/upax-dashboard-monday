@@ -41,7 +41,7 @@ function MqlChannelList({ channels, maxCount, showMax, needsMore, compact }) {
 /**
  * MqlChannelSection — MQLs por Canal con selector de semana
  */
-export const MqlChannelSection = React.memo(function MqlChannelSection({ mqlBreakdown, mqlBreakdownPrev, gddHistory, gddLoading, gddWeekView }) {
+export const MqlChannelSection = React.memo(function MqlChannelSection({ mqlBreakdown, mqlBreakdownPrev, gddHistory, gddData, gddLoading, gddWeekView }) {
   const [mqlWeekIdx, setMqlWeekIdx] = useState(-1)
   const [liveFetch, setLiveFetch] = useState(null) // { data, loading, weekKey }
   const liveFetchRef = useRef(null)
@@ -117,8 +117,12 @@ export const MqlChannelSection = React.memo(function MqlChannelSection({ mqlBrea
     }
   })()
 
+  // La semana en curso ya se muestra como "Esta semana" (value -1, datos en
+  // vivo). Se excluye del listado para no duplicarla con números distintos.
+  const currentWeekDesde = gddData?.fechas?.semana_desde
   const weeksWithBreakdown = (gddHistory || [])
     .map((w, i) => ({ ...w, _idx: i }))
+    .filter(w => w.semana_desde !== currentWeekDesde)
 
   return (
     <Accordion title="📊 MQLs por Canal" defaultOpen={false}>
@@ -167,7 +171,7 @@ export const MqlChannelSection = React.memo(function MqlChannelSection({ mqlBrea
                   onChange={e => setMqlWeekIdx(Number(e.target.value))}
                   style={{ fontSize: 10, padding: "3px 6px", borderRadius: 4, border: "1px solid var(--bg4)", background: C.bg2, color: C.tx2, cursor: "pointer", fontFamily: "inherit" }}
                 >
-                  <option value={-1}>Semana actual</option>
+                  <option value={-1}>Esta semana</option>
                   {weeksWithBreakdown.map(w => (
                     <option key={w._idx} value={w._idx}>
                       {fmtDate(w.semana_desde)} – {fmtDate(w.semana_hasta || w.semana_desde)}

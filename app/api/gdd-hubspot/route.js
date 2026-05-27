@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { validateAuth } from '../_auth'
 import { upstashGet, upstashSet } from '../../lib/upstash-server'
-import { hubspotSearchSplit, getMexicoNow, getDateRanges, METRIC_DEFS } from './helpers'
+import { hubspotSearchSplit, getMexicoNow, getDateRanges, buildDateFilters, METRIC_DEFS } from './helpers'
 
 export const dynamic = 'force-dynamic'
 
@@ -53,10 +53,7 @@ export async function GET(request) {
         const def = METRIC_DEFS[metric]
         return periodNames.map(period => {
           const { desde, hasta } = periods[period]
-          const dateFilters = [
-            { propertyName: def.dateField, operator: 'GTE', value: String(desde.getTime()) },
-            { propertyName: def.dateField, operator: 'LTE', value: String(hasta.getTime()) },
-          ]
+          const dateFilters = buildDateFilters(def.dateField, desde, hasta, def.dateOnly)
           return {
             metric,
             period,

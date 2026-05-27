@@ -98,7 +98,7 @@ const TabHome = React.memo(function TabHome({ analysis: an, items, elapsed, onSt
       <GddKpiSection gddData={gddData} gddTargets={gddTargets} gddLoading={gddLoading} />
 
       {/* MQLs por Canal — sub-componente extraido */}
-      <MqlChannelSection mqlBreakdown={mqlBreakdown} mqlBreakdownPrev={mqlBreakdownPrev} gddHistory={gddHistory} gddLoading={gddLoading} gddWeekView="current" />
+      <MqlChannelSection mqlBreakdown={mqlBreakdown} mqlBreakdownPrev={mqlBreakdownPrev} gddHistory={gddHistory} gddData={gddData} gddLoading={gddLoading} gddWeekView="current" />
 
       {/* Tendencia Semanal — sub-componente extraido */}
       <GddTrendSection gddData={gddData} gddHistory={gddHistory} gddLoading={gddLoading} />

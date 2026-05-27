@@ -131,6 +131,7 @@ export async function GET(request) {
   const { searchParams } = new URL(request.url)
   const semana_desde = searchParams.get('semana_desde')
   const semana_hasta = searchParams.get('semana_hasta')
+  const noCache = searchParams.get('nocache') === '1'
 
   // Validate required params
   if (!semana_desde || !semana_hasta) {
@@ -145,25 +146,29 @@ export async function GET(request) {
     return NextResponse.json({ error: true, message: 'HUBSPOT_PRIVATE_APP_TOKEN no configurado', por_origen: [], total: 0, semana_desde, semana_hasta }, { status: 503 })
   }
 
-  // Check Upstash cache first
+  // Check Upstash cache first (salvo nocache=1, p.ej. desde el backfill)
   const cacheKey = `hubspot-mqls-${semana_desde}-${semana_hasta}`
-  const cached = await upstashGet(cacheKey)
-  if (cached) {
-    return NextResponse.json({ ...cached, cached: true })
+  if (!noCache) {
+    const cached = await upstashGet(cacheKey)
+    if (cached) {
+      return NextResponse.json({ ...cached, cached: true })
+    }
   }
 
-  // Fetch from HubSpot
-  // HubSpot date filters require Unix timestamps in milliseconds.
-  // Anchor to CDMX (UTC-6) so the week boundaries match getDateRanges() in
-  // gdd-hubspot/helpers.js — parsing as 'Z' would shift the window 6h earlier.
-  const desdeMs = new Date(semana_desde + 'T00:00:00-06:00').getTime()
-  const hastaMs = new Date(semana_hasta + 'T23:59:59-06:00').getTime()
+  // Fetch from HubSpot. fecha_mql es una propiedad tipo `date` (solo fecha),
+  // que HubSpot almacena a medianoche UTC. Por eso la ventana se ancla a UTC
+  // (no a CDMX): anclarla a CDMX empujaría los MQLs del primer día de la semana
+  // al periodo anterior. Debe coincidir con buildDateFilters(dateOnly=true).
+  const desdeMs = new Date(semana_desde + 'T00:00:00.000Z').getTime()
+  const hastaMs = new Date(semana_hasta + 'T23:59:59.999Z').getTime()
 
   try {
     const contacts = await hubspotSearchAll(
       token,
       [
-        { propertyName: 'lifecyclestage', operator: 'EQ', value: 'marketingqualifiedlead' },
+        // Solo MKT (conversion=true). NO se filtra lifecyclestage: un contacto con
+        // fecha_mql en el periodo cuenta aunque ya haya avanzado a SQL/oportunidad.
+        { propertyName: 'conversion', operator: 'EQ', value: 'true' },
         { propertyName: 'fecha_mql', operator: 'GTE', value: String(desdeMs) },
         { propertyName: 'fecha_mql', operator: 'LTE', value: String(hastaMs) },
         { propertyName: 'udn', operator: 'HAS_PROPERTY' },
