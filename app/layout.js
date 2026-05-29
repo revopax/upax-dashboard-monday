@@ -19,7 +19,13 @@ export const metadata = {
   title: 'Weekly Mkt Corp | UPAX',
   description: 'Sistema de reunion semanal de marketing - Mkt Corp UPAX',
   robots: { index: false, follow: false }, // P4.8: no indexar
-  icons: { icon: '/favicon.svg' },
+  icons: {
+    icon: [
+      { url: '/favicon.png', type: 'image/png' },
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+    ],
+    apple: '/favicon.png',
+  },
 }
 
 // P4.8: viewport separado de metadata (Next.js 14 lo requiere así)

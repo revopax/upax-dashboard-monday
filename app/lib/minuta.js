@@ -23,16 +23,16 @@ export function generateMinuta(wd, analysis, gddData, mqlBreakdown, blockTimes, 
     t += `\n`;
 
     if (hasData) {
-      const fmt4 = (label, val, mktVal, comVal) => {
+      const fmt4 = (label, val, mktVal) => {
         let line = `   · ${label.padEnd(8)} ${String(val.toLocaleString()).padStart(6)}`;
-        if (mktVal != null && comVal != null) line += `  (Mkt: ${mktVal} | Com: ${comVal})`;
+        if (mktVal != null) line += `  (Mkt: ${mktVal})`;
         return line + '\n';
       };
 
-      const fmt4Delta = (label, cur, prev, mktVal, comVal) => {
+      const fmt4Delta = (label, cur, prev, mktVal) => {
         const pct = arrow(cur, prev);
         let line = `   · ${label.padEnd(8)} ${String(cur.toLocaleString()).padStart(6)}${pct ? "  "+pct : ""}`;
-        if (mktVal != null && comVal != null) line += `  (Mkt: ${mktVal} | Com: ${comVal})`;
+        if (mktVal != null) line += `  (Mkt: ${mktVal})`;
         return line + '\n';
       };
 
@@ -53,23 +53,23 @@ export function generateMinuta(wd, analysis, gddData, mqlBreakdown, blockTimes, 
       // Semana anterior (datos cerrados)
       if (a.leads || a.mqls || a.sqls || a.opps) {
         t += `   Semana anterior${prevDesde ? ` (${prevDesde} – ${prevHasta})` : ''}\n`;
-        t += fmt4("Leads", a.leads||0, a.leads_mkt, a.leads_com);
-        t += fmt4("MQLs",  a.mqls||0,  a.mqls_mkt,  a.mqls_com);
-        t += fmt4("SQLs",  a.sqls||0,  a.sqls_mkt,  a.sqls_com);
-        t += fmt4("Opps",  a.opps||0,  a.opps_mkt,  a.opps_com);
-        const aPipeline = a.pipeline_total || ((a.pipeline_mkt||0) + (a.pipeline_com||0));
-        if (aPipeline > 0) t += `   · Pipeline  ${fmtM(aPipeline)}  (Mkt ${fmtM(a.pipeline_mkt||0)} | Com ${fmtM(a.pipeline_com||0)})\n`;
+        t += fmt4("Leads", a.leads||0, a.leads_mkt);
+        t += fmt4("MQLs",  a.mqls||0,  a.mqls_mkt);
+        t += fmt4("SQLs",  a.sqls||0,  a.sqls_mkt);
+        t += fmt4("Opps",  a.opps||0,  a.opps_mkt);
+        const aPipeline = a.pipeline_mkt || 0;
+        if (aPipeline > 0) t += `   · Pipeline MKT  ${fmtM(aPipeline)}\n`;
         t += `\n`;
       }
 
       // Semana actual (con deltas vs anterior)
       t += `   Semana actual${curDesde ? ` (${curDesde} – ${curHasta})` : ''}\n`;
-      t += fmt4Delta("Leads", s.leads||0, a.leads||0, s.leads_mkt, s.leads_com);
-      t += fmt4Delta("MQLs",  s.mqls||0,  a.mqls||0,  s.mqls_mkt,  s.mqls_com);
-      t += fmt4Delta("SQLs",  s.sqls||0,  a.sqls||0,  s.sqls_mkt,  s.sqls_com);
-      t += fmt4Delta("Opps",  s.opps||0,  a.opps||0,  s.opps_mkt,  s.opps_com);
-      const pTotal = s.pipeline_total || ((s.pipeline_mkt||0) + (s.pipeline_com||0));
-      if (pTotal > 0) t += `   · Pipeline  ${fmtM(pTotal)}  (Mkt ${fmtM(s.pipeline_mkt||0)} | Com ${fmtM(s.pipeline_com||0)})\n`;
+      t += fmt4Delta("Leads", s.leads||0, a.leads||0, s.leads_mkt);
+      t += fmt4Delta("MQLs",  s.mqls||0,  a.mqls||0,  s.mqls_mkt);
+      t += fmt4Delta("SQLs",  s.sqls||0,  a.sqls||0,  s.sqls_mkt);
+      t += fmt4Delta("Opps",  s.opps||0,  a.opps||0,  s.opps_mkt);
+      const pTotal = s.pipeline_mkt || 0;
+      if (pTotal > 0) t += `   · Pipeline MKT  ${fmtM(pTotal)}\n`;
 
       if (y.leads) t += `   · YTD: Leads ${y.leads.toLocaleString()} · MQLs ${y.mqls||0} · SQLs ${y.sqls||0} · Opps ${y.opps||0}\n`;
     } else {

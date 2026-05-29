@@ -1,7 +1,7 @@
 'use client'
-import React, { useState } from 'react'
+import React, { useState, useRef } from 'react'
 import { SQUADS, STORE_KEY, PERSONAS, TODAY } from '../lib/constants'
-import { WEEK, shortName, parseTL, daysDiff, normalizeSquad, copyToClipboard, normalizeFocos } from '../lib/utils'
+import { shortName, parseTL, daysDiff, normalizeSquad, copyToClipboard, normalizeFocos } from '../lib/utils'
 import { storeSet } from '../lib/storage'
 import { authHeaders } from '../lib/api'
 import { generateMinuta } from '../lib/minuta'
@@ -95,7 +95,7 @@ function renderMinutaVisual(text, wd2, an, gdd2) {
     { label: "SQLs",  cur: s.sqls||0,  prev: a.sqls||0,  mes: mes.sqls||0,  ytd: y.sqls||0,  color: C.green },
     { label: "Opps",  cur: s.opps||0,  prev: a.opps||0,  mes: mes.opps||0,  ytd: y.opps||0,  color: C.yellow },
   ];
-  const pTotal = s.pipeline_total || ((s.pipeline_mkt||0)+(s.pipeline_com||0));
+  const pTotal = s.pipeline_mkt || 0;
   const fmtDateDMY = (dateStr) => {
     if (!dateStr) return "";
     const d = new Date(dateStr + (dateStr.includes("-") ? "T12:00:00" : ", 2026"));
@@ -124,11 +124,9 @@ function renderMinutaVisual(text, wd2, an, gdd2) {
         })}
       </div>
       <div style={{ padding: "10px 16px", borderTop: `1px solid ${C.bg4}`, display: "flex", gap: 16, flexWrap: "wrap", alignItems: "center" }}>
-        {pTotal > 0 && <>
-          <div style={{ fontSize: 12, color: C.tx3 }}>Pipeline <span style={{ fontWeight: 700, color: C.tx, fontFamily: F.mono }}>{fmtM(pTotal)}</span></div>
-          <div style={{ fontSize: 12, color: C.tx3 }}>Mkt <span style={{ fontWeight: 600 }}>{fmtM(s.pipeline_mkt||0)}</span></div>
-          <div style={{ fontSize: 12, color: C.tx3 }}>Com <span style={{ fontWeight: 600 }}>{fmtM(s.pipeline_com||0)}</span></div>
-        </>}
+        {pTotal > 0 && (
+          <div style={{ fontSize: 12, color: C.tx3 }}>Pipeline MKT <span style={{ fontWeight: 700, color: C.tx, fontFamily: F.mono }}>{fmtM(pTotal)}</span></div>
+        )}
         {f.lastUpdate && <div style={{ fontSize: 10, color: C.tx3, marginLeft: "auto" }}>Actualizado: {f.lastUpdate}</div>}
       </div>
     </SectionWrap>
@@ -323,11 +321,23 @@ function renderMinutaVisual(text, wd2, an, gdd2) {
       <div style={{ padding: "8px 16px" }}>
         {comps2.map((c,i) => {
           const done = c.status === "done";
+          const pct = Math.max(0, Math.min(100, c.pct || (done ? 100 : 0)));
           const fecha = c.cuando ? new Date(c.cuando+"T12:00:00").toLocaleDateString("es-MX",{day:"numeric",month:"short"}) : "sin fecha";
+          const pctColor = pct >= 100 ? C.green : pct >= 50 ? C.blue : pct > 0 ? C.yellow : C.tx3;
           return (
-            <div key={i} style={{ display:"flex", gap:10, alignItems:"flex-start", padding:"6px 0", borderBottom: i<comps2.length-1?`1px solid ${C.bg3}`:"none", opacity: done?0.55:1 }}>
+            <div key={i} style={{ display:"flex", gap:10, alignItems:"flex-start", padding:"7px 0", borderBottom: i<comps2.length-1?`1px solid ${C.bg3}`:"none", opacity: done?0.6:1 }}>
               <span style={{ color: done?C.green:C.blue, fontSize:16, flexShrink:0, lineHeight:1.3, marginTop:1 }}>{done?"✓":"○"}</span>
-              <span style={{ flex:1, fontSize:13, color: done?C.tx3:C.tx, lineHeight:1.5, textDecoration: done?"line-through":"none" }}>{c.que.trim()}</span>
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ fontSize:13, color: done?C.tx3:C.tx, lineHeight:1.5, textDecoration: done?"line-through":"none" }}>{c.que.trim()}</div>
+                {!done && pct > 0 && (
+                  <div style={{ display:"flex", alignItems:"center", gap:6, marginTop:4 }}>
+                    <div style={{ flex:1, maxWidth:120, height:4, background:C.bg3, borderRadius:2, overflow:"hidden" }}>
+                      <div style={{ width: pct+"%", height:"100%", background: pctColor, borderRadius:2 }} />
+                    </div>
+                    <span style={{ fontFamily:F.mono, fontSize:10, fontWeight:700, color: pctColor }}>{pct}%</span>
+                  </div>
+                )}
+              </div>
               <div style={{ flexShrink:0, textAlign:"right" }}>
                 <div style={{ fontSize:11, fontWeight:600, color:C.tx2 }}>{shortName(c.quien)||"—"}</div>
                 <div style={{ fontSize:10, color:C.tx3 }}>{fecha}</div>
@@ -339,47 +349,7 @@ function renderMinutaVisual(text, wd2, an, gdd2) {
     </SectionWrap>
   ) : null;
 
-  const sec5 = an2 ? (() => {
-    const pw = an2.byPersonWeek || {};
-    const all = PERSONAS
-      .filter(p => !p.sdr)
-      .map(p => ({
-        name: p.name,
-        squad: p.squad,
-        d: pw[p.name] || { items: 0, stopped: 0, total: 0 },
-      }))
-      .sort((a, b) => b.d.total - a.d.total);
-    const maxVal = Math.max(...all.map(p => p.d.total), 1);
-    const half = Math.ceil(all.length / 2);
-    const col1 = all.slice(0, half), col2 = all.slice(half);
-    const CRow = ({ person, squad, d, rank }) => {
-      const pct = maxVal > 0 ? d.total / maxVal : 0;
-      const barColor = d.total > 10 ? C.red : d.total > 6 ? C.yellow : d.total > 0 ? C.green : C.bg4;
-      const sqColor = SQUADS.find(s => s.name === squad)?.color || C.bg4;
-      return (
-        <div style={{ display:"flex", alignItems:"center", gap:6, padding:"4px 0", borderBottom:`1px solid ${C.bg3}`, opacity: d.total===0 ? 0.45 : 1 }}>
-          <span style={{ fontFamily:F.mono, fontSize:9, color:C.tx3, minWidth:14, textAlign:"right" }}>{rank}</span>
-          <span style={{ width:5, height:5, borderRadius:"50%", background:sqColor, flexShrink:0 }} />
-          <span style={{ fontSize:11, fontWeight: d.total>0 ? 600 : 400, flex:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", color:d.total>10?C.red:C.tx }}>{shortName(person)}</span>
-          {d.stopped>0 && <span style={{ fontSize:9, color:C.red, fontWeight:700 }}>🚫</span>}
-          <div style={{ width:44, height:4, background:C.bg4, borderRadius:2, overflow:"hidden", flexShrink:0 }}>
-            <div style={{ width:(pct*100)+"%", height:"100%", background:barColor, borderRadius:2 }} />
-          </div>
-          <span style={{ fontFamily:F.mono, fontSize:11, fontWeight:700, color: d.total>0 ? barColor : C.tx3, minWidth:20, textAlign:"right" }}>{d.total}</span>
-        </div>
-      );
-    };
-    return (
-      <SectionWrap num="5" title="CARGA SEMANAL" sub={"("+WEEK.start.toLocaleDateString("es-MX",{day:"numeric",month:"short"})+" – "+WEEK.end.toLocaleDateString("es-MX",{day:"numeric",month:"short"})+")"} color={C.cyan}>
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"0 16px", padding:"10px 16px" }}>
-          <div>{col1.map((p,i)=><CRow key={p.name} person={p.name} squad={p.squad} d={p.d} rank={i+1} />)}</div>
-          <div>{col2.map((p,i)=><CRow key={p.name} person={p.name} squad={p.squad} d={p.d} rank={half+i+1} />)}</div>
-        </div>
-      </SectionWrap>
-    );
-  })() : null;
-
-  return [header, sec1, sec2, sec3, sec4, sec5].filter(Boolean);
+  return [header, sec1, sec2, sec3, sec4].filter(Boolean);
 }
 
 
@@ -387,7 +357,7 @@ function PdfButton({ text, dateStr, wd, analysis, gddData }) {
   function handlePdf() {
     const gdd = gddData || {};
     const s = gdd.semana || {}, a = gdd.anterior || {}, mes = gdd.mes || {}, y = gdd.ytd || {}, f = gdd.fechas || {};
-    const pTotal = s.pipeline_total || ((s.pipeline_mkt||0)+(s.pipeline_com||0));
+    const pTotal = s.pipeline_mkt || 0;
     const fmtN = (v) => (v||0).toLocaleString("es-MX");
     const fmtM = (v) => v >= 1000000 ? "$"+(v/1000000).toFixed(1)+"M" : v >= 1000 ? "$"+(v/1000).toFixed(0)+"K" : "$"+(v||0);
     const pct = (cur, prev) => { if (!prev) return ""; const p = Math.round(((cur-prev)/prev)*100); return `<span style="color:${p>=0?"#16a34a":"#dc2626"};font-weight:700">${p>=0?"▲":"▼"}${Math.abs(p)}%</span>`; };
@@ -403,10 +373,15 @@ function PdfButton({ text, dateStr, wd, analysis, gddData }) {
         const presenter = wd.presenters?.[sq.id] || sq.lead;
         focosHtml += `<div style="margin-bottom:16px;padding:12px 16px;border-radius:8px;border-left:4px solid ${sq.color};background:#fafafa">
           <div style="font-weight:700;color:${sq.color};font-size:13px;margin-bottom:8px">${sq.name} <span style="font-weight:400;color:#666">· ${presenter}</span></div>`;
+        const fmtMeta = (quien, cuando) => {
+          const who = quien ? ` → <strong>${shortName(quien)}</strong>` : "";
+          const when = cuando ? ` · <strong>${new Date(cuando+"T12:00:00").toLocaleDateString("es-MX",{day:"numeric",month:"short"})}</strong>` : "";
+          return who + when;
+        };
         filled.forEach(f2 => {
           if (f2.focos?.trim()) focosHtml += `<div style="font-size:12px;color:#333;margin-bottom:4px">🎯 ${f2.focos.trim().replace(/</g,"&lt;")}</div>`;
-          if (f2.blocker?.trim()) focosHtml += `<div style="font-size:12px;color:#dc2626;margin-bottom:4px">🚫 <strong>Blocker:</strong> ${f2.blocker.trim().replace(/</g,"&lt;")}</div>`;
-          if (f2.necesito?.trim()) focosHtml += `<div style="font-size:12px;color:#d97706;margin-bottom:4px">🤝 <strong>Necesito:</strong> ${f2.necesito.trim().replace(/</g,"&lt;")}</div>`;
+          if (f2.blocker?.trim()) focosHtml += `<div style="font-size:12px;color:#dc2626;margin-bottom:4px">🚫 <strong>Blocker:</strong> ${f2.blocker.trim().replace(/</g,"&lt;")}${fmtMeta(f2.blocker_quien, f2.blocker_cuando)}</div>`;
+          if (f2.necesito?.trim()) focosHtml += `<div style="font-size:12px;color:#d97706;margin-bottom:4px">🤝 <strong>Necesito:</strong> ${f2.necesito.trim().replace(/</g,"&lt;")}${fmtMeta(f2.necesito_quien, f2.necesito_cuando)}</div>`;
         });
         focosHtml += `</div>`;
       });
@@ -416,15 +391,99 @@ function PdfButton({ text, dateStr, wd, analysis, gddData }) {
     const comps = (wd?.compromisos||[]).filter(c => c.que?.trim());
     if (comps.length) {
       compsHtml = comps.map((c,i) => {
+        const done = c.status === "done";
+        const pctV = Math.max(0, Math.min(100, c.pct || (done ? 100 : 0)));
+        const pctColor = pctV >= 100 ? "#16a34a" : pctV >= 50 ? "#0a84ff" : pctV > 0 ? "#d97706" : "#999";
         const fecha = c.cuando ? new Date(c.cuando+"T12:00:00").toLocaleDateString("es-MX",{day:"numeric",month:"short"}) : "sin fecha";
-        return `<div style="display:flex;gap:10px;padding:6px 0;border-bottom:1px solid #eee;font-size:12px">
-          <span style="color:${c.status==="done"?"#16a34a":"#999"}">${c.status==="done"?"✅":"⬜"}</span>
-          <span style="flex:1;${c.status==="done"?"text-decoration:line-through;color:#999":""}">${(c.que||"").replace(/</g,"&lt;")}</span>
-          <span style="color:#666">${shortName(c.quien)||""}</span>
-          <span style="color:#999">${fecha}</span>
+        const pctHtml = !done && pctV > 0
+          ? `<div style="display:flex;align-items:center;gap:6px;margin-top:4px"><div style="width:120px;height:4px;background:#eee;border-radius:2px;overflow:hidden"><div style="width:${pctV}%;height:100%;background:${pctColor};border-radius:2px"></div></div><span style="font-family:'Courier New',monospace;font-size:10px;font-weight:700;color:${pctColor}">${pctV}%</span></div>`
+          : "";
+        return `<div style="display:flex;gap:10px;padding:8px 0;border-bottom:1px solid #eee;font-size:12px;align-items:flex-start;${done?"opacity:.6":""}">
+          <span style="color:${done?"#16a34a":"#999"};font-size:14px;line-height:1">${done?"✅":"⬜"}</span>
+          <div style="flex:1;min-width:0">
+            <div style="${done?"text-decoration:line-through;color:#999":"color:#222"}">${(c.que||"").replace(/</g,"&lt;")}</div>
+            ${pctHtml}
+          </div>
+          <div style="text-align:right;flex-shrink:0">
+            <div style="color:#444;font-weight:600">${shortName(c.quien)||"—"}</div>
+            <div style="color:#999;font-size:10px">${fecha}</div>
+          </div>
         </div>`;
       }).join("");
     }
+
+    let panoramaHtml = "";
+    if (analysis) {
+      const an = analysis;
+      const spr = an.byPhaseWeek?.["🚧 Sprint"] || 0;
+      const rev = an.byPhaseWeek?.["👀 Review"] || 0;
+      const mod = an.byPhaseWeek?.["⚙️ Modificación"] || 0;
+      const det = an.byPhase?.["🚫 Detenido"] || 0;
+      const ven = (an.overdue || []).length;
+      const done = (an.doneLastWeek || []).length;
+      const alerts = [
+        { val: ven,         label: "Vencidos",  color: ven>0?"#dc2626":"#16a34a", icon: "⏰", sub: ven>0?"requieren acción":"Al día" },
+        { val: det,         label: "Detenidos", color: det>0?"#d97706":"#16a34a", icon: "🚫", sub: det>0?"bloqueados":"Sin bloqueos" },
+        { val: spr+rev+mod, label: "Activos",   color: "#0a84ff",                  icon: "⚡", sub: (rev+mod)+" en revisión" },
+        { val: done,        label: "Done sem.", color: done>0?"#16a34a":"#888",    icon: "✅", sub: (an.doneTotal||0)+" total" },
+      ];
+      panoramaHtml = `<div class="alert-grid">` + alerts.map(al => `
+        <div class="alert">
+          <div style="font-size:18px">${al.icon}</div>
+          <div class="alert-val" style="color:${al.color}">${al.val}</div>
+          <div class="alert-label">${al.label}</div>
+          <div class="alert-sub">${al.sub}</div>
+        </div>`).join("") + `</div>`;
+
+      const sqRows = SQUADS.map(sq => {
+        const d = an.bySquad?.[sq.name]; if (!d) return "";
+        const dw = an.bySquadWeek?.[sq.name];
+        const act = dw ? (dw.phases?.["🚧 Sprint"]||0)+(dw.phases?.["👀 Review"]||0)+(dw.phases?.["⚙️ Modificación"]||0) : 0;
+        const det2 = d.phases?.["🚫 Detenido"]||0;
+        const ven2 = (an.overdue||[]).filter(it => normalizeSquad(it.column_values?.color_mkz0s203)===sq.name).length;
+        return `<div class="squad-row">
+          <span class="squad-dot" style="background:${sq.color}"></span>
+          <span class="squad-name" style="color:${sq.color}">${sq.name.split(" ")[0]}</span>
+          <span class="squad-stat">${act} esta semana</span>
+          ${ven2>0?`<span style="color:#dc2626;font-weight:700;font-size:11px">${ven2} ⏰</span>`:""}
+          ${det2>0?`<span style="color:#d97706;font-weight:700;font-size:11px">${det2} 🚫</span>`:""}
+        </div>`;
+      }).filter(Boolean).join("");
+      if (sqRows) panoramaHtml += `<div class="squad-list">${sqRows}</div>`;
+
+      const renderList = (title, items, color, rowFn) => {
+        if (!items || !items.length) return "";
+        return `<h3 class="sub" style="color:${color}">${title} <span style="color:#888;font-weight:500">(${items.length})</span></h3>` +
+          items.slice(0, 6).map(rowFn).join("") +
+          (items.length > 6 ? `<div style="font-size:10px;color:#888;margin-top:4px">+${items.length-6} más</div>` : "");
+      };
+
+      panoramaHtml += renderList("⏰ Top vencidos", an.overdue||[], "#dc2626", it => {
+        const tl = parseTL(it.column_values?.timerange_mkzcqv0j);
+        const d = tl?.end ? daysDiff(TODAY, tl.end) : 0;
+        return `<div class="alert-item">
+          <span class="overdue-days">-${d}d</span>
+          <span class="alert-item-name">${(it.name||"").replace(/</g,"&lt;")}</span>
+          <span class="alert-item-who">${shortName(it.column_values?.person)||"sin asignar"}</span>
+        </div>`;
+      });
+      panoramaHtml += renderList("🚫 Detenidos esta semana", an.stoppedWeek||[], "#d97706", it => `
+        <div class="alert-item">
+          <span class="alert-item-name">${(it.name||"").replace(/</g,"&lt;")}</span>
+          <span class="alert-item-who">${shortName(it.column_values?.person)||"—"}</span>
+        </div>`);
+      panoramaHtml += renderList("📅 Sprint sin fecha", an.noCrono||[], "#d97706", it => `
+        <div class="alert-item">
+          <span class="alert-item-name">${(it.name||"").replace(/</g,"&lt;")}</span>
+          <span class="alert-item-who">${shortName(it.column_values?.person)||"—"}</span>
+        </div>`);
+      panoramaHtml += renderList("👤 Sin responsable", an.noResp||[], "#dc2626", it => `
+        <div class="alert-item">
+          <span class="alert-item-name">${(it.name||"").replace(/</g,"&lt;")}</span>
+          <span class="alert-item-who" style="color:#dc2626">sin asignar</span>
+        </div>`);
+    }
+
 
     const html = `<!DOCTYPE html>
 <html lang="es">
@@ -444,6 +503,23 @@ function PdfButton({ text, dateStr, wd, analysis, gddData }) {
   .kpi-sub { font-size: 10px; color: #888; margin-top: 4px; }
   .kpi-mes { font-size: 10px; color: #444; margin-top: 4px; border-top: 1px solid #f0f0f0; padding-top: 4px; }
   .pipeline { background: #f8f8f8; border-radius: 6px; padding: 10px 14px; font-size: 12px; color: #444; display: flex; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
+  .alert-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; margin-bottom: 14px; }
+  .alert { background: #f8f8f8; border-radius: 6px; padding: 12px 8px; text-align: center; }
+  .alert-val { font-family: "Courier New", monospace; font-size: 22px; font-weight: 800; margin: 4px 0; line-height: 1; }
+  .alert-label { font-size: 11px; font-weight: 700; color: #333; }
+  .alert-sub { font-size: 10px; color: #888; margin-top: 2px; }
+  .squad-list { background: #fafafa; border-radius: 6px; padding: 4px 12px; margin-bottom: 12px; border: 1px solid #eee; }
+  .squad-row { display: flex; gap: 8px; align-items: center; padding: 5px 0; border-bottom: 1px solid #eee; font-size: 12px; }
+  .squad-row:last-child { border-bottom: none; }
+  .squad-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; display: inline-block; }
+  .squad-name { font-weight: 700; min-width: 88px; }
+  .squad-stat { color: #666; flex: 1; }
+  h3.sub { font-size: 12px; font-weight: 700; margin: 14px 0 6px; padding-bottom: 4px; border-bottom: 1px solid #eee; }
+  .alert-item { display: flex; gap: 8px; align-items: center; padding: 4px 0; font-size: 11px; border-bottom: 1px solid #f3f3f3; }
+  .alert-item:last-child { border: none; }
+  .overdue-days { font-family: "Courier New", monospace; color: #dc2626; font-weight: 700; min-width: 32px; }
+  .alert-item-name { flex: 1; color: #444; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .alert-item-who { color: #888; }
   @media print {
     body { padding: 20px; }
     @page { margin: 1.5cm; size: A4; }
@@ -457,6 +533,12 @@ function PdfButton({ text, dateStr, wd, analysis, gddData }) {
     <span style="font-size:13px">📄 Para guardar como PDF: <strong>Ctrl+P</strong> (Windows) · <strong>⌘+P</strong> (Mac) → Guardar como PDF</span>
     <button onclick="window.close()" style="background:transparent;border:1px solid #555;color:#ccc;padding:5px 14px;border-radius:6px;cursor:pointer;font-size:12px">✕ Cerrar</button>
   </div>
+
+  <script>
+    window.addEventListener("load", function () {
+      setTimeout(function () { window.print(); }, 300);
+    });
+  </script>
 
   <h1>⚡ Minuta Weekly · Mkt Corp</h1>
   <div class="meta">📅 ${dateLabel} · Grupo UPAX</div>
@@ -475,7 +557,9 @@ function PdfButton({ text, dateStr, wd, analysis, gddData }) {
       ${m.mes ? `<div class="kpi-mes">${fmtN(m.mes)} acum. mes</div>` : ""}
     </div>`).join("")}
   </div>
-  ${pTotal > 0 ? `<div class="pipeline">🏦 Pipeline: <strong>${fmtM(pTotal)}</strong> · Mkt ${fmtM(s.pipeline_mkt||0)} · Com ${fmtM(s.pipeline_com||0)}</div>` : ""}
+  ${pTotal > 0 ? `<div class="pipeline">🏦 Pipeline MKT: <strong>${fmtM(pTotal)}</strong></div>` : ""}
+
+  ${panoramaHtml ? `<h2>📋 Panorama Operativo</h2>${panoramaHtml}` : ""}
 
   ${focosHtml ? `<h2>🎯 Focos por Squad</h2>${focosHtml}` : ""}
 
@@ -487,15 +571,15 @@ function PdfButton({ text, dateStr, wd, analysis, gddData }) {
 </body>
 </html>`;
 
-    const blob = new Blob([html], { type: "text/html;charset=utf-8" });
-    const dlUrl = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = dlUrl;
-    anchor.download = "minuta-weekly.html";
-    document.body.appendChild(anchor);
-    anchor.click();
-    document.body.removeChild(anchor);
-    URL.revokeObjectURL(dlUrl);
+    const w = window.open("", "_blank");
+    if (!w) {
+      alert("Tu navegador bloqueó la ventana emergente. Permite popups para esta página y vuelve a intentar.");
+      return;
+    }
+    w.document.open();
+    w.document.write(html);
+    w.document.close();
+    try { w.document.title = `Minuta Weekly ${dateStr}`; } catch {}
   }
 
   return (
@@ -505,7 +589,7 @@ function PdfButton({ text, dateStr, wd, analysis, gddData }) {
   );
 }
 
-function SlackButton({ text }) {
+function SlackButton({ text, captureRef, dateStr }) {
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [err, setErr] = useState(false);
@@ -513,15 +597,78 @@ function SlackButton({ text }) {
   async function handleSend() {
     setSending(true); setErr(false);
     try {
-      const res = await fetch("/api/slack", {
-        method: "POST",
-        headers: authHeaders(),
-        body: JSON.stringify({ text }),
-      });
-      const d = await res.json();
+      const el = captureRef?.current;
+      if (!el) throw new Error("Visual no disponible");
+      const { toBlob } = await import("html-to-image");
+
+      // html-to-image renderiza dentro de un SVG <foreignObject> aislado, que
+      // NO hereda las CSS custom properties del :root. Como todos los tokens
+      // del proyecto son var(--xxx), hay que setearlos como inline custom props
+      // en el elemento ANTES de capturar — el clon las heredará por cascada.
+      const rootStyle = getComputedStyle(document.documentElement);
+      const varNames = [
+        "--bg","--bg2","--bg3","--bg4",
+        "--tx","--tx2","--tx3","--border",
+        "--red","--green","--yellow","--orange","--blue","--purple","--cyan","--pink",
+        "--shadow","--shadow-lg",
+        "--r-2xs","--r-xs","--r-sm","--r","--r-lg","--r-full",
+        "--ts-2xs","--ts-xs","--ts-sm","--ts-base","--ts-md","--ts-lg","--ts-xl","--ts-display","--ts-hero",
+      ];
+      const saved = {};
+      for (const v of varNames) {
+        const val = rootStyle.getPropertyValue(v).trim();
+        if (val) {
+          saved[v] = el.style.getPropertyValue(v);
+          el.style.setProperty(v, val);
+        }
+      }
+      // Fuentes: --mono/--sans apuntan a var(--font-sans) inyectado por next/font
+      // en <html>, no transferibles al SVG. Fallback a sistema.
+      saved["--mono"] = el.style.getPropertyValue("--mono");
+      saved["--sans"] = el.style.getPropertyValue("--sans");
+      el.style.setProperty("--mono", "ui-monospace, 'JetBrains Mono', Menlo, monospace");
+      el.style.setProperty("--sans", "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif");
+
+      const bgResolved = rootStyle.getPropertyValue("--bg2").trim() || "#FFFFFF";
+      let blob;
+      try {
+        blob = await toBlob(el, {
+          backgroundColor: bgResolved,
+          pixelRatio: 2,
+          cacheBust: true,
+          style: { transform: "none" },
+        });
+      } finally {
+        for (const v of Object.keys(saved)) {
+          if (saved[v]) el.style.setProperty(v, saved[v]);
+          else el.style.removeProperty(v);
+        }
+      }
+      if (!blob) throw new Error("No se pudo generar la imagen");
+
+      const dateLabel = new Date(dateStr).toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+      const initialComment = `📋 *Weekly Mkt Corp · UPAX*\nMinuta del ${dateLabel}`;
+
+      const fd = new FormData();
+      fd.append("file", blob, `minuta-${dateStr}.png`);
+      fd.append("initial_comment", initialComment);
+
+      const headers = {};
+      if (process.env.NEXT_PUBLIC_API_SECRET) {
+        headers["Authorization"] = `Bearer ${process.env.NEXT_PUBLIC_API_SECRET}`;
+      }
+
+      const res = await fetch("/api/slack-file", { method: "POST", headers, body: fd });
+      const d = await res.json().catch(() => ({}));
       if (d.success) { setSent(true); setTimeout(() => setSent(false), 3000); }
-      else { setErr(true); setTimeout(() => setErr(false), 3000); copyToClipboard(text); }
-    } catch { setErr(true); setTimeout(() => setErr(false), 3000); copyToClipboard(text); }
+      else {
+        console.error("Slack server response:", res.status, d);
+        setErr(true); setTimeout(() => setErr(false), 3000); copyToClipboard(text);
+      }
+    } catch (e) {
+      console.error("Slack image send failed:", e);
+      setErr(true); setTimeout(() => setErr(false), 3000); copyToClipboard(text);
+    }
     setSending(false);
   }
 
@@ -548,6 +695,7 @@ function MinutaDetailView({ weekKey, data, todayWd, todayAnalysis, gddData, bloc
   const [editText, setEditText] = useState(rawText);
   const [copied, setCopied] = useState(false);
   const [saved, setSaved] = useState(false);
+  const visualRef = useRef(null);
   const displayText = editMode ? editText : rawText;
   const dateStr = weekKey.replace("weekly:", "");
   const dateFmt = new Date(dateStr).toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
@@ -575,19 +723,25 @@ function MinutaDetailView({ weekKey, data, todayWd, todayAnalysis, gddData, bloc
             ? <button onClick={handleSave} style={{ background: C.green, color: "#fff", border: "none", borderRadius: R.sm, padding: "6px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>{saved ? "✓" : "💾"}<span className="mobile-hide">{saved ? " Guardado" : " Guardar"}</span></button>
             : <button onClick={() => { setEditMode(true); setEditText(rawText); }} style={{ background: C.bg3, color: C.tx2, border: `1px solid ${C.bg4}`, borderRadius: R.sm, padding: "6px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>✏️<span className="mobile-hide"> Editar</span></button>}
           <button onClick={handleCopy} style={{ background: copied ? C.green : C.blue, color: "#fff", border: "none", borderRadius: R.sm, padding: "6px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>{copied ? "✓" : "📋"}<span className="mobile-hide">{copied ? " Copiado" : " Copiar"}</span></button>
-          <SlackButton text={displayText} />
+          <SlackButton text={displayText} captureRef={visualRef} dateStr={dateStr} />
           <PdfButton text={displayText} dateStr={dateStr} wd={visualWd} analysis={visualAn} gddData={visualGdd} />
           <button onClick={onClose} style={{ background: C.bg3, border: "none", width: 32, height: 32, borderRadius: 16, fontSize: 16, cursor: "pointer", color: C.tx3, display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
         </div>
       </div>
-      <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
-        {editMode ? (
+      <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column", position: "relative" }}>
+        {editMode && (
           <textarea value={editText} onChange={e => setEditText(e.target.value)} style={{ flex: 1, width: "100%", background: C.bg3, color: C.tx, border: "none", padding: "16px 20px", fontSize: 12, fontFamily: F.mono, resize: "none", outline: "none", lineHeight: 1.7 }} />
-        ) : (
-          <div style={{ flex: 1, overflowY: "auto", padding: "16px 20px" }}>
+        )}
+        <div
+          style={editMode
+            ? { position: "absolute", left: -99999, top: 0, width: 760, padding: "16px 20px", background: C.bg2, pointerEvents: "none" }
+            : { flex: 1, overflowY: "auto", padding: "16px 20px", background: C.bg2 }
+          }
+        >
+          <div ref={visualRef} style={{ background: C.bg2 }}>
             {renderMinutaVisual(rawText, visualWd, visualAn, visualGdd)}
           </div>
-        )}
+        </div>
       </div>
     </>
   );
