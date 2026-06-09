@@ -70,8 +70,7 @@ function renderMinutaVisual(text, wd2, an, gdd2) {
   );
 
   const gdd = gdd2 || { semana: {}, anterior: {}, ytd: {}, fechas: {} };
-  const s = gdd.semana || {}, a = gdd.anterior || {}, y = gdd.ytd || {}, f = gdd.fechas || {};
-  const pctChg = (cur, prev) => (!prev) ? null : Math.round(((cur-prev)/prev)*100);
+  const a = gdd.anterior || {}, y = gdd.ytd || {}, f = gdd.fechas || {};
   const fmtM = (v) => v >= 1000000 ? "$"+(v/1000000).toFixed(1)+"M" : v >= 1000 ? "$"+(v/1000).toFixed(0)+"K" : "$"+(v||0);
 
   const dateLabel = text ? text.split("\n")[0].replace("WEEKLY MKT CORP · ", "") : "";
@@ -89,39 +88,45 @@ function renderMinutaVisual(text, wd2, an, gdd2) {
   );
 
   const mes = gdd.mes || {};
+  // KPIs por default = semana pasada (datos cerrados). Mantiene paridad con el PDF.
   const gddMetrics = [
-    { label: "Leads", cur: s.leads||0, prev: a.leads||0, mes: mes.leads||0, ytd: y.leads||0, color: C.blue },
-    { label: "MQLs",  cur: s.mqls||0,  prev: a.mqls||0,  mes: mes.mqls||0,  ytd: y.mqls||0,  color: C.purple },
-    { label: "SQLs",  cur: s.sqls||0,  prev: a.sqls||0,  mes: mes.sqls||0,  ytd: y.sqls||0,  color: C.green },
-    { label: "Opps",  cur: s.opps||0,  prev: a.opps||0,  mes: mes.opps||0,  ytd: y.opps||0,  color: C.yellow },
+    { label: "Leads", cur: a.leads||0, mes: mes.leads||0, ytd: y.leads||0, color: C.blue },
+    { label: "MQLs",  cur: a.mqls||0,  mes: mes.mqls||0,  ytd: y.mqls||0,  color: C.purple },
+    { label: "SQLs",  cur: a.sqls||0,  mes: mes.sqls||0,  ytd: y.sqls||0,  color: C.green },
+    { label: "Opps",  cur: a.opps||0,  mes: mes.opps||0,  ytd: y.opps||0,  color: C.yellow },
   ];
-  const pTotal = s.pipeline_mkt || 0;
+  const pTotal = a.pipeline_mkt || 0;
   const fmtDateDMY = (dateStr) => {
     if (!dateStr) return "";
     const d = new Date(dateStr + (dateStr.includes("-") ? "T12:00:00" : ", 2026"));
     if (isNaN(d)) return dateStr;
     return d.toLocaleDateString("es-MX", { day: "2-digit", month: "2-digit", year: "numeric" }).replace(/\//g, " - ");
   };
-  const gddSub = f.semana_desde ? `${fmtDateDMY(f.semana_desde)}${f.semana_hasta ? " al " + fmtDateDMY(f.semana_hasta) : ""}` : "";
+  // Rango de semana pasada = (semana_desde − 7) … (semana_desde − 1).
+  const prevRange = (() => {
+    if (!f.semana_desde) return { desde: "", hasta: "" };
+    const base = new Date(f.semana_desde + "T12:00:00");
+    const start = new Date(base); start.setDate(start.getDate() - 7);
+    const end = new Date(base); end.setDate(end.getDate() - 1);
+    const iso = d => d.toISOString().slice(0, 10);
+    return { desde: iso(start), hasta: iso(end) };
+  })();
+  const gddSub = prevRange.desde
+    ? `Semana pasada · ${fmtDateDMY(prevRange.desde)} al ${fmtDateDMY(prevRange.hasta)}`
+    : "Semana pasada";
   const sec1 = (
     <SectionWrap num="1" title="GENERACIÓN DE DEMANDA" sub={gddSub} color={C.blue}>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 1, background: C.bg4 }}>
-        {gddMetrics.map((m, i) => {
-          const pct = pctChg(m.cur, m.prev);
-          return (
-            <div key={i} style={{ padding: "14px 16px", background: C.bg2 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: C.tx3, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 6 }}>{m.label}</div>
-              <div style={{ fontFamily: F.mono, fontSize: 28, fontWeight: 800, color: m.color, lineHeight: 1, letterSpacing: "-0.04em" }}>{m.cur.toLocaleString()}</div>
-              <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 6 }}>
-                {pct !== null && <span style={{ fontSize: 11, fontWeight: 700, color: pct >= 0 ? C.green : C.red }}>{pct >= 0 ? "▲" : "▼"}{Math.abs(pct)}%</span>}
-                <span style={{ fontSize: 10, color: C.tx3 }}>vs sem. ant.</span>
-              </div>
-              {m.mes > 0 && <div style={{ marginTop: 5, fontSize: 10, color: C.tx3, borderTop: `1px solid ${C.bg4}`, paddingTop: 4 }}>
-                <span style={{ color: C.tx2, fontWeight: 600 }}>{m.mes.toLocaleString()}</span> <span>acum. mes</span>
-              </div>}
-            </div>
-          );
-        })}
+        {gddMetrics.map((m, i) => (
+          <div key={i} style={{ padding: "14px 16px", background: C.bg2 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: C.tx3, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 6 }}>{m.label}</div>
+            <div style={{ fontFamily: F.mono, fontSize: 28, fontWeight: 800, color: m.color, lineHeight: 1, letterSpacing: "-0.04em" }}>{m.cur.toLocaleString()}</div>
+            <div style={{ marginTop: 6, fontSize: 10, color: C.tx3 }}>datos cerrados</div>
+            {m.mes > 0 && <div style={{ marginTop: 5, fontSize: 10, color: C.tx3, borderTop: `1px solid ${C.bg4}`, paddingTop: 4 }}>
+              <span style={{ color: C.tx2, fontWeight: 600 }}>{m.mes.toLocaleString()}</span> <span>acum. mes</span>
+            </div>}
+          </div>
+        ))}
       </div>
       <div style={{ padding: "10px 16px", borderTop: `1px solid ${C.bg4}`, display: "flex", gap: 16, flexWrap: "wrap", alignItems: "center" }}>
         {pTotal > 0 && (
