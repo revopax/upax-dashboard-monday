@@ -1,9 +1,9 @@
 'use client'
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 // components/TabAgenda.jsx
 import { AGENDA, SQUADS } from '../lib/constants'
-import { C, TS, R, F } from '../lib/tokens'
-import { Alerta, Card, PersonSelect } from './ui'
+import { C, R, F } from '../lib/tokens'
+import { Card, PersonSelect } from './ui'
 
 const TabAgenda = React.memo(function TabAgenda({ wd, setWd, save, currentIdx, blockTimes, onJumpToBlock }) {
   const [edit, setEdit] = useState(false);
@@ -11,27 +11,37 @@ const TabAgenda = React.memo(function TabAgenda({ wd, setWd, save, currentIdx, b
   const missing = AGENDA.filter((b) => b.squad && !pr[b.id]?.trim());
   const setPr = (id, v) => { const n = { ...wd, presenters: { ...wd.presenters, [id]: v } }; setWd(n); save(n); };
 
+  // Hidratar defaults para squads con defaultPresenter (PR Ceci, Político-Electoral)
+  // si todavía no tienen presentador asignado en esta weekly. Solo al mount.
+  useEffect(() => {
+    const updates = {};
+    for (const sq of SQUADS) {
+      if (sq.defaultPresenter && !pr[sq.id]?.trim()) updates[sq.id] = sq.defaultPresenter;
+    }
+    if (Object.keys(updates).length > 0) {
+      const n = { ...wd, presenters: { ...wd.presenters, ...updates } };
+      setWd(n); save(n);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <div className="fade">
       {missing.length > 0 && !edit && (
-        missing.length >= 3 ? (
-          <Card style={{ borderTop: "3px solid var(--yellow)", marginBottom: 12 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: C.yellow, marginBottom: 8 }}>
-              ⚠️ {missing.length} bloques sin presentador
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 8 }}>
-              {missing.map(b => (
-                <div key={b.id} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: b.color, flexShrink: 0 }} />
-                  <span style={{ fontSize: 11, fontWeight: 600, minWidth: 80 }}>{b.label}</span>
-                  <PersonSelect value={pr[b.id] || ""} onChange={(e) => setPr(b.id, e.target.value)} squad={SQUADS.find((s) => s.id === b.sq)?.name} style={{ flex: 1 }} />
-                </div>
-              ))}
-            </div>
-          </Card>
-        ) : (
-          <Alerta icon="⚠️" text={`Faltan presentadores: ${missing.map((b) => b.label).join(", ")}`} />
-        )
+        <Card style={{ borderTop: "3px solid var(--yellow)", marginBottom: 12 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: C.yellow, marginBottom: 8 }}>
+            ⚠️ {missing.length} {missing.length === 1 ? "bloque sin presentador" : "bloques sin presentador"}
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 8 }}>
+            {missing.map(b => (
+              <div key={b.id} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <span style={{ width: 8, height: 8, borderRadius: "50%", background: b.color, flexShrink: 0 }} />
+                <span style={{ fontSize: 11, fontWeight: 600, minWidth: 80 }}>{b.label}</span>
+                <PersonSelect value={pr[b.id] || ""} onChange={(e) => setPr(b.id, e.target.value)} squad={SQUADS.find((s) => s.id === b.sq)?.name} style={{ flex: 1 }} />
+              </div>
+            ))}
+          </div>
+        </Card>
       )}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
         <div>

@@ -7,3 +7,7 @@ out/
 .DS_Store
 *.log
 .vercel
+
+# Notas locales para Claude — no compartir
+CLAUDE.local.md
+.claude/

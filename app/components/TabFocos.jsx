@@ -90,60 +90,33 @@ const TabFocos = React.memo(function TabFocos({ items, wd, setWd, save, activeSq
       </div>
 
       {isCross ? (
-        <>
-          <Card style={{ borderTop: "3px solid var(--purple)" }}>
-            <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 10 }}>Cross-Squad — Resumen</div>
-            {(() => {
-              const hasAny = SQUADS.some((s) => { const arr = normalizeFocos(focos[s.id]); return arr.some((f) => f.focos?.trim() || f.blocker?.trim() || f.necesito?.trim()); });
-              if (!hasAny) return <div style={{ textAlign: "center", padding: "16px 0", color: C.tx3, fontSize: 12 }}>Aún no hay registros. Se llenan desde cada squad.</div>;
-              return SQUADS.map((s) => {
-                const arr = normalizeFocos(focos[s.id]);
-                const filled = arr.filter((f) => f.focos?.trim() || f.blocker?.trim() || f.necesito?.trim());
-                if (!filled.length) return null;
-                return (
-                  <div key={s.id} style={{ marginBottom: 10, padding: "8px 10px", borderRadius: 8, borderLeft: `3px solid ${s.color}`, background: C.bg }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: s.color, marginBottom: 4 }}>{s.name}</div>
-                    {filled.map((f, fi) => (
-                      <div key={fi} style={{ marginBottom: fi < filled.length - 1 ? 6 : 0 }}>
-                        {f.focos?.trim() && <div style={{ fontSize: 12, color: C.tx, marginBottom: 1 }}>🎯 {f.focos}</div>}
-                        {f.blocker?.trim() && <div style={{ fontSize: 12, color: C.red, marginBottom: 1 }}>🚫 {f.blocker}{f.blocker_quien ? ` → ${shortName(f.blocker_quien)}` : ""}{f.blocker_cuando ? ` · ${new Date(f.blocker_cuando + "T12:00:00").toLocaleDateString("es-MX", { day: "numeric", month: "short" })}` : ""}</div>}
-                        {f.necesito?.trim() && <div style={{ fontSize: 12, color: C.yellow, marginBottom: 1 }}>🤝 {f.necesito}{f.necesito_quien ? ` → ${shortName(f.necesito_quien)}` : ""}{f.necesito_cuando ? ` · ${new Date(f.necesito_cuando + "T12:00:00").toLocaleDateString("es-MX", { day: "numeric", month: "short" })}` : ""}</div>}
-                      </div>
-                    ))}
-                  </div>
-                );
-              });
-            })()}
-          </Card>
-          <Card style={{ borderTop: "3px solid var(--purple)", marginTop: 10 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8 }}>Agregar item cross-squad</div>
-            <RepeatableItems icon="🚫" label="Blocker" placeholder="Blocker que afecta a varios squads..." items={draft.blockerList} onChange={(items) => updateDraft("blockerList", items)} withMeta />
-            <RepeatableItems icon="🤝" label="Necesito" placeholder="Necesidad cross-squad..." items={draft.necesitoList} onChange={(items) => updateDraft("necesitoList", items)} withMeta />
-            <div style={{ display: "flex", gap: 6, alignItems: "center", justifyContent: "flex-end" }}>
-              {saved && <span style={{ fontSize: 11, color: C.green, fontWeight: 600 }}>✓ Guardado</span>}
-              <button onClick={saveDraft} disabled={!hasDraft} style={{ background: hasDraft ? C.tx : C.bg4, color: hasDraft ? C.bg : C.tx3, border: "none", borderRadius: 8, padding: "8px 20px", fontSize: 12, fontWeight: 700, cursor: hasDraft ? "pointer" : "default" }}>
-                Guardar
-              </button>
-            </div>
-            {entries.length > 0 && (
-              <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px dashed var(--bg4)" }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: C.tx3, marginBottom: 6 }}>Items cross-squad directos</div>
-                {entries.map((entry, idx) => (
-                  <div key={idx} style={{ padding: "8px 10px", marginBottom: 4, borderRadius: 8, background: C.bg, border: "1px solid var(--bg4)" }}>
-                    {entry.blocker?.trim() && <div style={{ fontSize: 12, color: C.red, marginBottom: 1 }}>🚫 {entry.blocker}{entry.blocker_quien ? ` → ${shortName(entry.blocker_quien)}` : ""}{entry.blocker_cuando ? ` · ${new Date(entry.blocker_cuando + "T12:00:00").toLocaleDateString("es-MX", { day: "numeric", month: "short" })}` : ""}</div>}
-                    {entry.necesito?.trim() && <div style={{ fontSize: 12, color: C.yellow, marginBottom: 1 }}>🤝 {entry.necesito}{entry.necesito_quien ? ` → ${shortName(entry.necesito_quien)}` : ""}{entry.necesito_cuando ? ` · ${new Date(entry.necesito_cuando + "T12:00:00").toLocaleDateString("es-MX", { day: "numeric", month: "short" })}` : ""}</div>}
-                    <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
-                      <span onClick={() => editEntry(idx)} style={{ fontSize: 10, color: C.blue, cursor: "pointer" }}>Editar</span>
-                      {confirmDelIdx === idx
-                        ? <><span onClick={() => { deleteEntry(idx); setConfirmDelIdx(null); }} style={{ fontSize: 10, color: C.red, cursor: "pointer", fontWeight: 600 }}>Confirmar</span><span onClick={() => setConfirmDelIdx(null)} style={{ fontSize: 10, color: C.tx3, cursor: "pointer" }}>Cancelar</span></>
-                        : <span onClick={() => setConfirmDelIdx(idx)} style={{ fontSize: 10, color: C.tx3, cursor: "pointer" }}>Borrar</span>}
+        <Card style={{ borderTop: "3px solid var(--purple)" }}>
+          <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4 }}>Cross-Squad — Blockers y Necesitos</div>
+          <div style={{ fontSize: 11, color: C.tx3, marginBottom: 12 }}>Solo lectura. Se llenan desde cada squad.</div>
+          {(() => {
+            const hasAny = SQUADS.some((s) => {
+              const arr = normalizeFocos(focos[s.id]);
+              return arr.some((f) => f.blocker?.trim() || f.necesito?.trim());
+            });
+            if (!hasAny) return <div style={{ textAlign: "center", padding: "16px 0", color: C.tx3, fontSize: 12 }}>Aún no hay blockers ni necesitos. Se llenan desde cada squad.</div>;
+            return SQUADS.map((s) => {
+              const arr = normalizeFocos(focos[s.id]);
+              const filled = arr.filter((f) => f.blocker?.trim() || f.necesito?.trim());
+              if (!filled.length) return null;
+              return (
+                <div key={s.id} style={{ marginBottom: 10, padding: "8px 10px", borderRadius: 8, borderLeft: `3px solid ${s.color}`, background: C.bg }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: s.color, marginBottom: 4 }}>{s.name}</div>
+                  {filled.map((f, fi) => (
+                    <div key={fi} style={{ marginBottom: fi < filled.length - 1 ? 6 : 0 }}>
+                      {f.blocker?.trim() && <div style={{ fontSize: 12, color: C.red, marginBottom: 1 }}>🚫 {f.blocker}{f.blocker_quien ? ` → ${shortName(f.blocker_quien)}` : ""}{f.blocker_cuando ? ` · ${new Date(f.blocker_cuando + "T12:00:00").toLocaleDateString("es-MX", { day: "numeric", month: "short" })}` : ""}</div>}
+                      {f.necesito?.trim() && <div style={{ fontSize: 12, color: C.yellow, marginBottom: 1 }}>🤝 {f.necesito}{f.necesito_quien ? ` → ${shortName(f.necesito_quien)}` : ""}{f.necesito_cuando ? ` · ${new Date(f.necesito_cuando + "T12:00:00").toLocaleDateString("es-MX", { day: "numeric", month: "short" })}` : ""}</div>}
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </Card>
-        </>
+                  ))}
+                </div>
+              );
+            });
+          })()}
+        </Card>
       ) : (
         <>
           <Card style={{ borderTop: `3px solid ${sq?.color}`, padding: "16px 20px", marginBottom: 14 }}>
