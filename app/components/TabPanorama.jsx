@@ -8,16 +8,28 @@ import { Bar, Card, Chip } from './ui'
 
 const TabPanorama = React.memo(function TabPanorama({ analysis: an, items, onDrillDown }) {
   const [sec, setSec] = useState("squads");
+  const [collapsed, setCollapsed] = useState(() => new Set());
   useEffect(() => {
     try {
       const saved = sessionStorage.getItem("panorama-tab");
       if (saved === "squads" || saved === "alertas") setSec(saved);
+      const savedCol = sessionStorage.getItem("panorama-collapsed");
+      if (savedCol) setCollapsed(new Set(JSON.parse(savedCol)));
     } catch {}
   }, []);
   const setSecPersist = (s) => {
     setSec(s);
     try { sessionStorage.setItem("panorama-tab", s); } catch {}
   };
+  const toggleCollapsed = (id) => setCollapsed(prev => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    try { sessionStorage.setItem("panorama-collapsed", JSON.stringify([...next])); } catch {}
+    return next;
+  });
+  const Caret = ({ open }) => (
+    <span aria-hidden="true" style={{ display: "inline-block", fontSize: 10, color: C.tx3, transform: open ? "rotate(0deg)" : "rotate(-90deg)", transition: "transform .15s" }}>▼</span>
+  );
 
   return (
     <div className="fade">
@@ -42,32 +54,46 @@ const TabPanorama = React.memo(function TabPanorama({ analysis: an, items, onDri
         const act = (d.phases["🚧 Sprint"] || 0) + (d.phases["👀 Review"] || 0) + (d.phases["⚙️ Modificación"] || 0);
         const sqOverdue = (an.overdue || []).filter((it) => normalizeSquad(it.column_values?.color_mkz0s203) === sq.name);
         const sqNoCrono = (an.noCrono || []).filter((it) => normalizeSquad(it.column_values?.color_mkz0s203) === sq.name);
+        const cardId = `squad:${sq.id}`;
+        const isOpen = !collapsed.has(cardId);
         return (
           <Card key={sq.id} style={{ marginBottom: 8 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
-              <span style={{ fontSize: 14, fontWeight: 700, color: sq.color }}>{sq.name} <span style={{ fontWeight: 500, color: C.tx3, fontSize: 12 }}>· {sq.lead}</span></span>
-              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <div
+              role="button"
+              tabIndex={0}
+              aria-expanded={isOpen}
+              onClick={() => toggleCollapsed(cardId)}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleCollapsed(cardId); } }}
+              style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: isOpen ? 5 : 0, cursor: "pointer", userSelect: "none", gap: 8 }}
+            >
+              <span style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                <Caret open={isOpen} />
+                <span style={{ fontSize: 14, fontWeight: 700, color: sq.color }}>{sq.name} <span style={{ fontWeight: 500, color: C.tx3, fontSize: 12 }}>· {sq.lead}</span></span>
+              </span>
+              <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
                 <span style={{ fontSize: 12, color: C.tx3 }}>{act} activos</span>
                 {sqOverdue.length > 0 && <span style={{ fontSize: 11, fontWeight: 700, color: C.red }}>🔴 {sqOverdue.length} venc.</span>}
                 {(d.phases["🚫 Detenido"] || 0) > 0 && <span style={{ fontSize: 11, fontWeight: 700, color: C.red }}>🚫 {d.phases["🚫 Detenido"]} det.</span>}
               </div>
             </div>
-            <Bar h={14} segs={[{ l: "Spr", v: d.phases["🚧 Sprint"] || 0, c: C.yellow, ph: "🚧 Sprint" }, { l: "Rev", v: d.phases["👀 Review"] || 0, c: C.cyan, ph: "👀 Review" }, { l: "Mod", v: d.phases["⚙️ Modificación"] || 0, c: C.purple, ph: "⚙️ Modificación" }, { l: "Det", v: d.phases["🚫 Detenido"] || 0, c: C.red, ph: "🚫 Detenido" }, { l: "BL", v: d.phases["⏳Backlog"] || 0, c: C.bg4, ph: "⏳Backlog" }]} onSegmentClick={onDrillDown ? (seg) => {
-              const filtered = items.filter(it => normalizeSquad(it.column_values?.color_mkz0s203) === sq.name && it.column_values?.color_mkz09na === seg.ph);
-              onDrillDown({ phase: `${sq.name} — ${seg.l}`, items: filtered });
-            } : undefined} />
-            {sqOverdue.length > 0 && (
-              <div style={{ marginTop: 8, background: "rgba(255,59,48,.06)", borderRadius: 8, padding: "6px 10px", borderLeft: "3px solid var(--red)" }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: C.red, textTransform: "uppercase", letterSpacing: 1, marginBottom: 3 }}>Vencidos · {sqOverdue.length}</div>
-                {sqOverdue.map((it) => { const tl = parseTL(it.column_values?.timerange_mkzcqv0j); const dd = tl.end ? daysDiff(TODAY, tl.end) : 0; return <div key={it.id} style={{ display: "flex", gap: 4, alignItems: "center", fontSize: 11, padding: "1px 0" }}><span style={{ fontFamily: F.mono, color: C.red, fontWeight: 700, minWidth: 28, fontSize: 10 }}>-{dd}d</span><span style={{ flex: 1, color: C.tx2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.name}</span><span style={{ color: C.tx3, fontSize: 10 }}>{shortName(it.column_values?.person)}</span></div>; })}
-              </div>
-            )}
-            {sqNoCrono.length > 0 && (
-              <div style={{ marginTop: 6, fontSize: 11, color: C.yellow, padding: "6px 10px", background: "rgba(255,159,10,.06)", borderRadius: 8, borderLeft: "3px solid var(--yellow)" }}>
-                <div style={{ fontWeight: 700, fontSize: 10, textTransform: "uppercase", letterSpacing: 1, marginBottom: 2 }}>⚠️ {sqNoCrono.length} en Sprint sin Fecha</div>
-                {sqNoCrono.map((it) => <div key={it.id} style={{ display: "flex", gap: 4, padding: "1px 0", color: C.tx2 }}><span style={{ color: C.yellow }}>•</span><span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.name}</span><span style={{ color: C.tx3, fontSize: 10 }}>{shortName(it.column_values?.person)}</span></div>)}
-              </div>
-            )}
+            {isOpen && (<>
+              <Bar h={14} segs={[{ l: "Spr", v: d.phases["🚧 Sprint"] || 0, c: C.yellow, ph: "🚧 Sprint" }, { l: "Rev", v: d.phases["👀 Review"] || 0, c: C.cyan, ph: "👀 Review" }, { l: "Mod", v: d.phases["⚙️ Modificación"] || 0, c: C.purple, ph: "⚙️ Modificación" }, { l: "Det", v: d.phases["🚫 Detenido"] || 0, c: C.red, ph: "🚫 Detenido" }, { l: "BL", v: d.phases["⏳Backlog"] || 0, c: C.bg4, ph: "⏳Backlog" }]} onSegmentClick={onDrillDown ? (seg) => {
+                const filtered = items.filter(it => normalizeSquad(it.column_values?.color_mkz0s203) === sq.name && it.column_values?.color_mkz09na === seg.ph);
+                onDrillDown({ phase: `${sq.name} — ${seg.l}`, items: filtered });
+              } : undefined} />
+              {sqOverdue.length > 0 && (
+                <div style={{ marginTop: 8, background: "rgba(255,59,48,.06)", borderRadius: 8, padding: "6px 10px", borderLeft: "3px solid var(--red)" }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: C.red, textTransform: "uppercase", letterSpacing: 1, marginBottom: 3 }}>Vencidos · {sqOverdue.length}</div>
+                  {sqOverdue.map((it) => { const tl = parseTL(it.column_values?.timerange_mkzcqv0j); const dd = tl.end ? daysDiff(TODAY, tl.end) : 0; return <div key={it.id} style={{ display: "flex", gap: 4, alignItems: "center", fontSize: 11, padding: "1px 0" }}><span style={{ fontFamily: F.mono, color: C.red, fontWeight: 700, minWidth: 28, fontSize: 10 }}>-{dd}d</span><span style={{ flex: 1, color: C.tx2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.name}</span><span style={{ color: C.tx3, fontSize: 10 }}>{shortName(it.column_values?.person)}</span></div>; })}
+                </div>
+              )}
+              {sqNoCrono.length > 0 && (
+                <div style={{ marginTop: 6, fontSize: 11, color: C.yellow, padding: "6px 10px", background: "rgba(255,159,10,.06)", borderRadius: 8, borderLeft: "3px solid var(--yellow)" }}>
+                  <div style={{ fontWeight: 700, fontSize: 10, textTransform: "uppercase", letterSpacing: 1, marginBottom: 2 }}>⚠️ {sqNoCrono.length} en Sprint sin Fecha</div>
+                  {sqNoCrono.map((it) => <div key={it.id} style={{ display: "flex", gap: 4, padding: "1px 0", color: C.tx2 }}><span style={{ color: C.yellow }}>•</span><span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.name}</span><span style={{ color: C.tx3, fontSize: 10 }}>{shortName(it.column_values?.person)}</span></div>)}
+                </div>
+              )}
+            </>)}
           </Card>
         );
       });
@@ -98,29 +124,45 @@ const TabPanorama = React.memo(function TabPanorama({ analysis: an, items, onDri
             { items: an.noCrono || [], label: "📅 Sprint sin Fecha", color: C.yellow },
             { items: an.backlogWithDates || [], label: "📅 Backlog con Fecha", color: C.yellow },
             { items: an.noResp || [], label: "👤 Sin responsable", color: C.tx3, showSquad: true },
-          ].filter((g) => g.items.length > 0).map((g, gi) => (
+          ].filter((g) => g.items.length > 0).map((g, gi) => {
+            const cardId = `alert:${g.label}`;
+            const isOpen = !collapsed.has(cardId);
+            return (
             <Card key={gi} style={{ marginBottom: 8, borderLeft: `4px solid ${g.color}` }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: g.color }}>{g.label}</span>
+              <div
+                role="button"
+                tabIndex={0}
+                aria-expanded={isOpen}
+                onClick={() => toggleCollapsed(cardId)}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleCollapsed(cardId); } }}
+                style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: isOpen ? 6 : 0, cursor: "pointer", userSelect: "none", gap: 8 }}
+              >
+                <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <Caret open={isOpen} />
+                  <span style={{ fontSize: 13, fontWeight: 700, color: g.color }}>{g.label}</span>
+                </span>
                 <span style={{ fontFamily: F.mono, fontSize: 16, fontWeight: 700, color: g.color }}>{g.items.length}</span>
               </div>
-              <div style={{ maxHeight: 220, overflowY: "auto" }}>
-                {g.items.map((it) => {
-                  const sq = SQUADS.find((s) => s.name === normalizeSquad(it.column_values?.color_mkz0s203));
-                  return (
-                    <div key={it.id} style={{ display: "flex", gap: 6, alignItems: "center", padding: "4px 0", borderBottom: "1px solid var(--bg3)", fontSize: 12 }}>
-                      <span style={{ width: 8, height: 8, borderRadius: "50%", background: sq?.color || C.tx3, flexShrink: 0 }} />
-                      {g.extra && g.extra(it)}
-                      <span style={{ flex: 1, color: C.tx, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.name}</span>
-                      {g.showSquad
-                        ? <span style={{ fontSize: 10, fontWeight: 700, color: sq?.color || C.tx3, background: (sq?.color || "#888") + "20", borderRadius: 4, padding: "2px 7px", flexShrink: 0 }}>{sq?.name?.split(" ")[0] || "?"}</span>
-                        : <span style={{ color: C.tx3, fontSize: 11 }}>{shortName(it.column_values?.person)}</span>}
-                    </div>
-                  );
-                })}
-              </div>
+              {isOpen && (
+                <div style={{ maxHeight: 220, overflowY: "auto" }}>
+                  {g.items.map((it) => {
+                    const sq = SQUADS.find((s) => s.name === normalizeSquad(it.column_values?.color_mkz0s203));
+                    return (
+                      <div key={it.id} style={{ display: "flex", gap: 6, alignItems: "center", padding: "4px 0", borderBottom: "1px solid var(--bg3)", fontSize: 12 }}>
+                        <span style={{ width: 8, height: 8, borderRadius: "50%", background: sq?.color || C.tx3, flexShrink: 0 }} />
+                        {g.extra && g.extra(it)}
+                        <span style={{ flex: 1, color: C.tx, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.name}</span>
+                        {g.showSquad
+                          ? <span style={{ fontSize: 10, fontWeight: 700, color: sq?.color || C.tx3, background: (sq?.color || "#888") + "20", borderRadius: 4, padding: "2px 7px", flexShrink: 0 }}>{sq?.name?.split(" ")[0] || "?"}</span>
+                          : <span style={{ color: C.tx3, fontSize: 11 }}>{shortName(it.column_values?.person)}</span>}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </Card>
-          ))}
+            );
+          })}
           {(an.overdue || []).length === 0 && (an.stoppedWeek || []).length === 0 && (an.noCrono || []).length === 0 && (
             <Card style={{ textAlign: "center", padding: 24 }}><div style={{ fontSize: 28, marginBottom: 4 }}>✅</div><div style={{ color: C.green, fontSize: 14, fontWeight: 600 }}>Sin alertas de gobernanza</div></Card>
           )}
