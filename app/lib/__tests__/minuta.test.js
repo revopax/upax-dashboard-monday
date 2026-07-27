@@ -48,14 +48,22 @@ const makeMqlBreakdown = () => ({
   ],
 })
 
+// getSprintRoadmap solo toma items con deadline en el MES ACTUAL, asi que los
+// deadlines se generan dinamicamente (mismo patron que getSprintRoadmap.test.js).
+// Con fechas fijas el test de ROADMAP se rompia al cambiar de mes.
+const thisMonth = (day) => {
+  const now = new Date()
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${day}`
+}
+
 const makeItems = () => [
   {
     id: '100', name: 'Credenciales RL',
-    column_values: { color_mkz09na: '🚧 Sprint', date_mm1b10rx: '2026-05-05', color_mkz0s203: 'Inbound Studio', person: 'Jean Pierre Barroilhet', timerange_mkzcqv0j: '2026-05-01 - 2026-05-05' },
+    column_values: { color_mkz09na: '🚧 Sprint', date_mm1b10rx: thisMonth('05'), color_mkz0s203: 'Performance y Conversión', person: 'Fernando Borges', timerange_mkzcqv0j: '2026-05-01 - 2026-05-05' },
   },
   {
     id: '101', name: 'Landing MC',
-    column_values: { color_mkz09na: '👀 Review', date_mm1b10rx: '2026-05-12', color_mkz0s203: 'Performance y Conversión', person: 'Paul Zárate', timerange_mkzcqv0j: '2026-05-05 - 2026-05-12' },
+    column_values: { color_mkz09na: '👀 Review', date_mm1b10rx: thisMonth('12'), color_mkz0s203: 'Web y contenidos', person: 'Paul Zárate', timerange_mkzcqv0j: '2026-05-05 - 2026-05-12' },
   },
 ]
 

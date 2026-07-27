@@ -1,11 +1,11 @@
 'use client'
-import React, { useState, useEffect } from 'react'
-// components/TabMinutas.jsx — Lista de minutas (TabMinutasInline)
-import { STORE_KEY } from '../lib/constants'
-import { copyToClipboard } from '../lib/utils'
+import React, { useState, useEffect, useMemo } from 'react'
+// components/TabMinutas.jsx — Lista de minutas (TabMinutasInline), agrupada por mes.
+import { STORE_KEY, TODAY_STR } from '../lib/constants'
+import { copyToClipboard, formatLongDate, formatMonthYear } from '../lib/utils'
 import { storeGet, storeDel, storeList } from '../lib/storage'
 import { generateMinuta } from '../lib/minuta'
-import { C, R } from '../lib/tokens'
+import { C, R, F } from '../lib/tokens'
 import { Alerta } from './ui'
 
 const TabMinutasInline = React.memo(function TabMinutasInline({ wd, analysis, gddData, blockTimes, onOpenMinuta }) {
@@ -14,14 +14,35 @@ const TabMinutasInline = React.memo(function TabMinutasInline({ wd, analysis, gd
   const [confirmDel, setConfirmDel] = useState(null);
   const [copied, setCopied] = useState(null);
 
+  const CURRENT_YM = TODAY_STR.slice(0, 7);
+  // Meses colapsados. Arranca vacio: el mes en curso queda abierto y los demas se
+  // cierran por defecto via `isOpen()`, sin necesidad de precargar el estado.
+  const [collapsed, setCollapsed] = useState({});
+  const isOpen = (ym) => (ym in collapsed ? !collapsed[ym] : ym === CURRENT_YM);
+  const toggle = (ym) => setCollapsed((p) => ({ ...p, [ym]: isOpen(ym) }));
+
   useEffect(() => {
     (async () => {
       const allKeys = await storeList("weekly:");
-      const merged = [...new Set([STORE_KEY, ...allKeys])].sort().reverse();
+      // Excluye los backups `weekly:<fecha>:before_reset` que crea el reset de sesion:
+      // no son minutas y su fecha no parsea, salian como "Fecha no disponible".
+      const onlyWeeklies = allKeys.filter((k) => /^weekly:\d{4}-\d{2}-\d{2}$/.test(k));
+      const merged = [...new Set([STORE_KEY, ...onlyWeeklies])].sort().reverse();
       setKeys(merged);
       setLoading(false);
     })();
   }, []);
+
+  // Agrupa por mes (YYYY-MM), meses y minutas mas recientes primero.
+  const groups = useMemo(() => {
+    const m = new Map();
+    keys.forEach((k) => {
+      const ym = k.replace("weekly:", "").slice(0, 7);
+      if (!m.has(ym)) m.set(ym, []);
+      m.get(ym).push(k);
+    });
+    return [...m.entries()].sort((a, b) => b[0].localeCompare(a[0]));
+  }, [keys]);
 
   async function openMinuta(k, editMode = false) {
     const d = await storeGet(k);
@@ -49,11 +70,7 @@ const TabMinutasInline = React.memo(function TabMinutasInline({ wd, analysis, gd
     setConfirmDel(null);
   }
 
-  const dateFmt = (k) => {
-    const d = new Date(k.replace("weekly:", ""));
-    if (isNaN(d.getTime())) return "Fecha no disponible";
-    return d.toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
-  };
+  const dateFmt = (k) => formatLongDate(k.replace("weekly:", ""));
   return (
     <div className="fade">
       <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16 }}>Minutas</h2>
@@ -68,7 +85,18 @@ const TabMinutasInline = React.memo(function TabMinutasInline({ wd, analysis, gd
         <div style={{ textAlign: "center", padding: 40, color: C.tx3 }}>Cargando...</div>
       ) : keys.length === 0 ? (
         <Alerta icon="ℹ️" text="No hay minutas aún. Se generan al terminar una weekly." color={C.blue} />
-      ) : keys.map((k) => {
+      ) : groups.map(([ym, monthKeys]) => {
+        const open = isOpen(ym);
+        const label = formatMonthYear(ym);
+        return (
+        <div key={ym} style={{ marginBottom: 10 }}>
+          <button onClick={() => toggle(ym)} aria-expanded={open} style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, background: "transparent", border: "none", borderBottom: `1px solid ${C.bg4}`, padding: "8px 2px", cursor: "pointer", textAlign: "left" }}>
+            <span style={{ fontSize: 10, color: C.tx3, transform: open ? "rotate(90deg)" : "none", transition: "transform .15s", display: "inline-block" }}>▶</span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: ym === CURRENT_YM ? C.blue : C.tx2, textTransform: "capitalize" }}>{label}</span>
+            <span style={{ fontSize: 10, color: C.tx3, fontFamily: F.mono }}>{monthKeys.length}</span>
+            {ym === CURRENT_YM && <span style={{ fontSize: 9, background: C.blue, color: "#fff", borderRadius: 4, padding: "1px 5px", fontWeight: 700 }}>MES EN CURSO</span>}
+          </button>
+          {open && <div style={{ paddingTop: 8 }}>{monthKeys.map((k) => {
         const isToday = k === STORE_KEY;
         return (
           <div key={k} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", borderRadius: R.default, marginBottom: 8, background: C.bg2, border: `1px solid ${isToday ? C.blue : C.bg4}`, boxShadow: isToday ? `0 0 0 1px ${C.blue}` : C.shadow }}>
@@ -96,6 +124,9 @@ const TabMinutasInline = React.memo(function TabMinutasInline({ wd, analysis, gd
               </button>
             </div>
           </div>
+        );
+      })}</div>}
+        </div>
         );
       })}
     </div>

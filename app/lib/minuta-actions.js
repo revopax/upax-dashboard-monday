@@ -5,7 +5,7 @@
  * El componente MinutaDetailView solo contiene UI.
  */
 import { SQUADS } from './constants'
-import { shortName, normalizeFocos } from './utils'
+import { shortName, normalizeFocos, formatLongDate } from './utils'
 import { authHeaders } from './api'
 
 /**
@@ -22,7 +22,7 @@ export function generatePdfHtml(dateStr, wd, gddData) {
   const fmtN = (v) => (v||0).toLocaleString("es-MX")
   const fmtM = (v) => v >= 1000000 ? "$"+(v/1000000).toFixed(1)+"M" : v >= 1000 ? "$"+(v/1000).toFixed(0)+"K" : "$"+(v||0)
   const pct = (cur, prev) => { if (!prev) return ""; const p = Math.round(((cur-prev)/prev)*100); return `<span style="color:${p>=0?"#16a34a":"#dc2626"};font-weight:700">${p>=0?"▲":"▼"}${Math.abs(p)}%</span>` }
-  const dateLabel = new Date(dateStr).toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long", year: "numeric" })
+  const dateLabel = formatLongDate(dateStr)
 
   let focosHtml = ""
   if (wd) {

@@ -2,28 +2,35 @@
 import React, { useState, useEffect } from 'react'
 // components/TabAgenda.jsx
 import { AGENDA, SQUADS } from '../lib/constants'
+import { presenterFor } from '../lib/utils'
 import { C, R, F } from '../lib/tokens'
 import { Card, PersonSelect } from './ui'
 
 const TabAgenda = React.memo(function TabAgenda({ wd, setWd, save, currentIdx, blockTimes, onJumpToBlock }) {
   const [edit, setEdit] = useState(false);
   const pr = wd.presenters || {};
-  const missing = AGENDA.filter((b) => b.squad && !pr[b.id]?.trim());
+  // Presentador efectivo: lo elegido, o el defaultPresenter del squad. Se resuelve
+  // en cada render para que Angel salga preseleccionado en Político-Electoral
+  // incluso antes de que la hidratación de abajo alcance a persistirlo.
+  const eff = (id) => presenterFor(pr, id);
+  const missing = AGENDA.filter((b) => b.squad && !eff(b.id).trim());
   const setPr = (id, v) => { const n = { ...wd, presenters: { ...wd.presenters, [id]: v } }; setWd(n); save(n); };
 
-  // Hidratar defaults para squads con defaultPresenter (PR Ceci, Político-Electoral)
-  // si todavía no tienen presentador asignado en esta weekly. Solo al mount.
+  // Persistir los defaults (Político-Electoral) para que viajen a la minuta.
+  // Depende de wd.date: al montar, wd puede seguir siendo emptyWeekly() porque la
+  // carga desde Upstash es async (ver Dashboard.jsx). Sin esa dependencia el write
+  // se perdía cuando llegaba el wd real.
   useEffect(() => {
     const updates = {};
     for (const sq of SQUADS) {
-      if (sq.defaultPresenter && !pr[sq.id]?.trim()) updates[sq.id] = sq.defaultPresenter;
+      if (sq.defaultPresenter && !wd.presenters?.[sq.id]?.trim()) updates[sq.id] = sq.defaultPresenter;
     }
     if (Object.keys(updates).length > 0) {
       const n = { ...wd, presenters: { ...wd.presenters, ...updates } };
       setWd(n); save(n);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [wd.date]);
 
   return (
     <div className="fade">
@@ -37,7 +44,7 @@ const TabAgenda = React.memo(function TabAgenda({ wd, setWd, save, currentIdx, b
               <div key={b.id} style={{ display: "flex", alignItems: "center", gap: 6 }}>
                 <span style={{ width: 8, height: 8, borderRadius: "50%", background: b.color, flexShrink: 0 }} />
                 <span style={{ fontSize: 11, fontWeight: 600, minWidth: 80 }}>{b.label}</span>
-                <PersonSelect value={pr[b.id] || ""} onChange={(e) => setPr(b.id, e.target.value)} squad={SQUADS.find((s) => s.id === b.sq)?.name} style={{ flex: 1 }} />
+                <PersonSelect value={eff(b.id)} onChange={(e) => setPr(b.id, e.target.value)} squad={SQUADS.find((s) => s.id === b.sq)?.name} style={{ flex: 1 }} />
               </div>
             ))}
           </div>
@@ -64,14 +71,14 @@ const TabAgenda = React.memo(function TabAgenda({ wd, setWd, save, currentIdx, b
         const isPast = idx < currentIdx;
         const sq = SQUADS.find((s) => s.id === b.id);
         return (
-          <div key={b.id} onClick={() => !edit && onJumpToBlock(idx)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: R.sm, marginBottom: 3, background: isCur ? `${b.color}0D` : (b.squad && !pr[b.id]?.trim()) ? "rgba(255,59,48,.04)" : "transparent", border: isCur ? `1px solid ${b.color}25` : "1px solid transparent", cursor: edit ? "default" : "pointer", opacity: isPast && !edit ? 0.35 : 1,
+          <div key={b.id} onClick={() => !edit && onJumpToBlock(idx)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: R.sm, marginBottom: 3, background: isCur ? `${b.color}0D` : (b.squad && !eff(b.id).trim()) ? "rgba(255,59,48,.04)" : "transparent", border: isCur ? `1px solid ${b.color}25` : "1px solid transparent", cursor: edit ? "default" : "pointer", opacity: isPast && !edit ? 0.35 : 1,
               transition: "all .2s" }}>
             <span style={{ fontFamily: F.mono, fontWeight: 700, color: isCur ? b.color : `${b.color}80`, minWidth: 38, fontSize: 11 }}>{String(b.start).padStart(2, "0")}:00</span>
             <div style={{ width: 3, height: 22, borderRadius: R.sm, background: isCur ? b.color : isPast ? `${b.color}40` : C.bg4 }} />
             <span style={{ minWidth: 120, fontWeight: isCur ? 700 : 500, fontSize: 13, color: isCur ? C.tx : C.tx2 }}>{b.label}</span>
             {edit && b.squad
-              ? <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 6 }}><PersonSelect value={pr[b.id] || ""} onChange={(e) => setPr(b.id, e.target.value)} squad={sq?.name} style={{ flex: 1 }} /><span style={{ fontSize: 10, color: C.tx3 }}>Lead: {sq?.lead}</span></div>
-              : <span style={{ flex: 1, fontSize: 12, color: C.tx3 }}>{b.squad ? (pr[b.id] ? <><span style={{ color: b.color, fontWeight: 600 }}>{pr[b.id]}</span> · {sq?.lead}</> : <span style={{ color: C.red }}>Sin asignar · {sq?.lead}</span>) : b.fixed}</span>}
+              ? <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 6 }}><PersonSelect value={eff(b.id)} onChange={(e) => setPr(b.id, e.target.value)} squad={sq?.name} style={{ flex: 1 }} /><span style={{ fontSize: 10, color: C.tx3 }}>Lead: {sq?.lead}</span></div>
+              : <span style={{ flex: 1, fontSize: 12, color: C.tx3 }}>{b.squad ? (eff(b.id) ? <><span style={{ color: b.color, fontWeight: 600 }}>{eff(b.id)}</span> · {sq?.lead}</> : <span style={{ color: C.red }}>Sin asignar · {sq?.lead}</span>) : b.fixed}</span>}
             <span style={{ fontFamily: F.mono, color: C.tx3, fontSize: 11 }}>
               {blockTimes?.[b.id] ? <span style={{ color: blockTimes[b.id] > b.dur * 60 ? C.red : C.green }}>{Math.floor(blockTimes[b.id] / 60)}:{String(blockTimes[b.id] % 60).padStart(2, "0")}</span> : `${b.dur}'`}
             </span>

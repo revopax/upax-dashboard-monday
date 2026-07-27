@@ -21,9 +21,9 @@ describe('getSprintRoadmap', () => {
     const deadline = `${y}-${m}-15`
 
     const items = [
-      makeItem('1', '🚧 Sprint', deadline, 'Inbound Studio'),
-      makeItem('2', '⏳Backlog', deadline, 'Inbound Studio'),
-      makeItem('3', '✅ Done', deadline, 'Inbound Studio'),
+      makeItem('1', '🚧 Sprint', deadline, 'Performance y Conversión'),
+      makeItem('2', '⏳Backlog', deadline, 'Performance y Conversión'),
+      makeItem('3', '✅ Done', deadline, 'Performance y Conversión'),
     ]
     const result = getSprintRoadmap(items)
     expect(result).toHaveLength(1)
@@ -37,8 +37,8 @@ describe('getSprintRoadmap', () => {
     const deadline = `${y}-${m}-20`
 
     const items = [
-      makeItem('1', '🚧 Sprint', deadline, 'Inbound Studio'),
-      makeItem('2', '👀 Review', deadline, 'Performance y Conversión'),
+      makeItem('1', '🚧 Sprint', deadline, 'Performance y Conversión'),
+      makeItem('2', '👀 Review', deadline, 'Web y contenidos'),
       makeItem('3', '⚙️ Modificación', deadline, 'RevOps & Analytics'),
     ]
     const result = getSprintRoadmap(items)
@@ -46,13 +46,13 @@ describe('getSprintRoadmap', () => {
   })
 
   it('excludes items without deadline', () => {
-    const items = [makeItem('1', '🚧 Sprint', null, 'Inbound Studio')]
+    const items = [makeItem('1', '🚧 Sprint', null, 'Performance y Conversión')]
     const result = getSprintRoadmap(items)
     expect(result).toHaveLength(0)
   })
 
   it('excludes items with deadline outside current month', () => {
-    const items = [makeItem('1', '🚧 Sprint', '2020-01-15', 'Inbound Studio')]
+    const items = [makeItem('1', '🚧 Sprint', '2020-01-15', 'Performance y Conversión')]
     const result = getSprintRoadmap(items)
     expect(result).toHaveLength(0)
   })
@@ -63,15 +63,15 @@ describe('getSprintRoadmap', () => {
     const m = String(now.getMonth() + 1).padStart(2, '0')
 
     const items = [
-      makeItem('1', '🚧 Sprint', `${y}-${m}-20`, 'Performance y Conversión'),
-      makeItem('2', '🚧 Sprint', `${y}-${m}-10`, 'Inbound Studio'),
-      makeItem('3', '🚧 Sprint', `${y}-${m}-15`, 'Inbound Studio'),
+      makeItem('1', '🚧 Sprint', `${y}-${m}-20`, 'Web y contenidos'),
+      makeItem('2', '🚧 Sprint', `${y}-${m}-10`, 'Performance y Conversión'),
+      makeItem('3', '🚧 Sprint', `${y}-${m}-15`, 'Performance y Conversión'),
     ]
     const result = getSprintRoadmap(items)
     // Grouped by squad order (SQUADS array order), then by deadline
-    expect(result[0].id).toBe('2') // Inbound first (index 0 in SQUADS), earlier deadline
-    expect(result[1].id).toBe('3') // Inbound, later deadline
-    expect(result[2].id).toBe('1') // Performance (index 1 in SQUADS)
+    expect(result[0].id).toBe('2') // Performance y Conversión first (index 0 in SQUADS), earlier deadline
+    expect(result[1].id).toBe('3') // Performance y Conversión, later deadline
+    expect(result[2].id).toBe('1') // Web y contenidos (index 1 in SQUADS)
   })
 
   it('returns empty array for empty items', () => {

@@ -1,12 +1,13 @@
 'use client'
 import React from 'react'
 // components/TimerZone.jsx — barra de timer sticky
-import { AGENDA } from '../lib/constants'
+import { AGENDA, WEEKLY_TOTAL_MIN } from '../lib/constants'
+import { presenterFor } from '../lib/utils'
 import { C, R, F } from '../lib/tokens'
 
 const TimerZone = React.memo(function TimerZone({ elapsed, running, onStart, onPause, onNext, onPrev, onFinish, block, wd, blockTimes, currentIdx }) {
   const mm = Math.floor(elapsed / 60), ss = elapsed % 60;
-  const eMin = elapsed / 60, overtime = eMin >= 60;
+  const eMin = elapsed / 60, overtime = eMin >= WEEKLY_TOTAL_MIN;
   const rem = Math.max(0, block.dur - (eMin - block.start));
   const urgent = rem <= 1 && running;
   const pr = wd.presenters || {};
@@ -34,18 +35,18 @@ const TimerZone = React.memo(function TimerZone({ elapsed, running, onStart, onP
         <div aria-live="polite" aria-atomic="true" style={{ display: "flex", alignItems: "center", gap: 8, flex: 1, background: urgent ? "rgba(255,69,58,.1)" : C.bg, border: `0.3px solid ${urgent ? "rgba(255,69,58,.3)" : C.border}`, borderRadius: R.sm, padding: "7px 14px", minWidth: 180, animation: urgent ? "pulse 1s ease infinite" : "none" }}>
           {running && <div aria-hidden="true" style={{ width: 6, height: 6, borderRadius: "50%", background: urgent ? C.red : block.color, animation: "liveDot 1.2s ease infinite", flexShrink: 0 }} />}
           <span style={{ fontSize: 13, fontWeight: 700, color: urgent ? C.red : block.color }}>{block.label}</span>
-          <span style={{ fontSize: 11, color: urgent ? C.red : C.tx3 }}>{block.squad ? (pr[block.id] || "Sin asignar") : block.fixed}</span>
+          <span style={{ fontSize: 11, color: urgent ? C.red : C.tx3 }}>{block.squad ? (presenterFor(pr, block.id) || "Sin asignar") : block.fixed}</span>
           <span style={{ marginLeft: "auto", fontFamily: F.mono, fontSize: 13, fontWeight: 600, color: urgent ? C.red : C.tx2 }}>{Math.ceil(rem)}m</span>
         </div>
         <span className="sr-only" aria-live="assertive">{ss === 0 && running ? `${mm} minutos, bloque ${block.label}` : ""}</span>
         <div style={{ display: "flex", borderRadius: R.sm, overflow: "hidden", height: 6, width: 140, flexShrink: 0 }}>
           {AGENDA.map((b, i) => (
-            <div key={b.id} title={`${b.label}${blockTimes?.[b.id] ? ": " + Math.floor(blockTimes[b.id] / 60) + ":" + String(blockTimes[b.id] % 60).padStart(2, "0") : ""}`} style={{ width: `${(b.dur / 60) * 100}%`, background: i === currentIdx ? b.color : i < currentIdx ? `${b.color}60` : `${b.color}15`, transition: "all .3s", borderRight: i < AGENDA.length - 1 ? `1px solid ${C.bg}` : "none" }} />
+            <div key={b.id} title={`${b.label}${blockTimes?.[b.id] ? ": " + Math.floor(blockTimes[b.id] / 60) + ":" + String(blockTimes[b.id] % 60).padStart(2, "0") : ""}`} style={{ width: `${(b.dur / WEEKLY_TOTAL_MIN) * 100}%`, background: i === currentIdx ? b.color : i < currentIdx ? `${b.color}60` : `${b.color}15`, transition: "all .3s", borderRight: i < AGENDA.length - 1 ? `1px solid ${C.bg}` : "none" }} />
           ))}
         </div>
       </div>
       <div style={{ maxWidth: 920, margin: "6px auto 0", height: 2, borderRadius: R.sm, background: C.bg4 }}>
-        <div style={{ height: "100%", borderRadius: R.sm, background: overtime ? C.red : block.color, width: `${Math.min(100, (eMin / 60) * 100)}%`, transition: "width 1s linear" }} />
+        <div style={{ height: "100%", borderRadius: R.sm, background: overtime ? C.red : block.color, width: `${Math.min(100, (eMin / WEEKLY_TOTAL_MIN) * 100)}%`, transition: "width 1s linear" }} />
       </div>
     </div>
   );

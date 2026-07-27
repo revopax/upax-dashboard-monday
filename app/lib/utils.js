@@ -110,6 +110,63 @@ export function overlapsThisWeek(timelineStr) {
 export function pctColor(pct) { return pct >= 80 ? "var(--green)" : pct >= 50 ? "var(--yellow)" : "var(--red)"; }
 export function shortName(n) { return (n || "—").split(" ").slice(0, 2).join(" "); }
 
+// formatLongDate — "2026-07-27" → "lunes, 27 de julio de 2026".
+//
+// SIEMPRE ancla la hora a T12:00:00 (mediodia local). Motivo: `new Date("2026-07-27")`
+// se parsea como medianoche UTC, y al formatear en CDMX (UTC-6) retrocede 6h y cae
+// en el dia anterior ("domingo, 26 de julio"). Ese era el bug de las fechas de las
+// minutas. Mediodia deja 12h de margen a cada lado, asi que ningun offset lo mueve.
+export function formatLongDate(dateStr) {
+  if (!dateStr) return "Fecha no disponible";
+  const d = new Date(String(dateStr).slice(0, 10) + "T12:00:00");
+  if (isNaN(d.getTime())) return "Fecha no disponible";
+  return d.toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+}
+
+// formatMonthYear — "2026-07" (o "2026-07-27") → "julio de 2026". Mismo anclaje.
+export function formatMonthYear(ymStr) {
+  if (!ymStr) return "";
+  const d = new Date(String(ymStr).slice(0, 7) + "-01T12:00:00");
+  if (isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("es-MX", { month: "long", year: "numeric" });
+}
+
+// weeklyHasContent — true si en esa weekly ya se capturo algo real.
+// Se usa para distinguir una weekly "en curso" de una vacia recien creada.
+export function weeklyHasContent(w) {
+  if (!w) return false;
+  if ((w.elapsed || 0) > 0) return true;
+  if ((w.compromisos || []).some((c) => c.que?.trim())) return true;
+  // Solo cuentan presentadores de squads que siguen existiendo: quedan `presenters`
+  // de squads disueltos (ej. "pr") que por si solos harian ver como "en curso" una
+  // weekly que en realidad no tiene nada capturado.
+  if (SQUADS.some((s) => w.presenters?.[s.id]?.trim())) return true;
+  return SQUADS.some((s) =>
+    normalizeFocos(w.focos?.[s.id]).some((f) => f.focos?.trim() || f.blocker?.trim() || f.necesito?.trim())
+  );
+}
+
+// isWeeklyEnCurso — weekly empezada pero no cerrada.
+// Las weeklies viejas (anteriores al campo `status`) que ya tienen minutaText
+// guardada se consideran cerradas.
+export function isWeeklyEnCurso(w) {
+  if (!w) return false;
+  if (w.status === "finished") return false;
+  if (!w.status && w.minutaText) return false;
+  return weeklyHasContent(w);
+}
+
+// presenterFor — presentador efectivo de un bloque de squad: lo que se eligio en
+// la weekly, o el defaultPresenter del squad si nadie lo ha tocado (ej. Angel en
+// Político-Electoral, que debe verse siempre preseleccionado).
+// Se resuelve en cada lectura, no solo al hidratar, para que no dependa de que
+// wd ya haya cargado desde Upstash cuando se monta la agenda.
+export function presenterFor(presenters, squadId) {
+  const chosen = presenters?.[squadId];
+  if (chosen?.trim()) return chosen;
+  return SQUADS.find((s) => s.id === squadId)?.defaultPresenter || "";
+}
+
 export function getPersonDetail(name, items) {
   const weekTasks = [], otherTasks = [];
   const nameWords = name.toLowerCase().split(" ");

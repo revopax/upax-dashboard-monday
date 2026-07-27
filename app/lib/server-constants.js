@@ -1,10 +1,12 @@
 // lib/server-constants.js — constantes que solo se usan en API routes (server-side)
 // NO importar desde componentes cliente — estos IDs no deben estar en el bundle del frontend
 
+// Reorg jul-2026: se quitaron Víctor Tzili, Jean Pierre Barroilhet y Andrea Jurado
+// (salieron del area). Arath Escamilla se queda: solo cambio de squad a Portafolio.
 export const MONDAY_USERS = {
-  "Franco Cruzat": 65476480, "Víctor Tzili": 67444758,
-  "Jean Pierre Barroilhet": 68748021, "Paul Zárate": 65476499,
-  "Andrea Jurado": 80225986, "Arath Escamilla": 71090387,
+  "Franco Cruzat": 65476480,
+  "Paul Zárate": 65476499,
+  "Arath Escamilla": 71090387,
   "Andry Carvajal": 98248405, "Alejandro Maciel": 77343229,
   "Iris Múgica": 65476486, "Fernando Borges": 77871300,
   "Marco Antonio Juárez": 69017925, "Diana Cruz": 70199066,
@@ -14,6 +16,6 @@ export const MONDAY_USERS = {
   "Carolina Rojas": 72959487, "Sergio Franco": 70061556,
   "Tairi Medina": 67627150, "Ileana Cruz": 65476115,
   "Elizabeth Gómez": 76801151,
-  // SDRs (Jennifer, Edna, Neyby, Leodegario, Aliosha) no tienen cuenta Monday — P4.9
+  // SDRs (Jennifer, Edna, Neyby, Leodegario) no tienen cuenta Monday — P4.9
   // Si se les crea cuenta, agregar sus IDs aquí para que los compromisos se asignen correctamente
 };

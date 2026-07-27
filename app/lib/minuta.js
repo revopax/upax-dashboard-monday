@@ -1,11 +1,13 @@
 'use client'
 // lib/minuta.js — generador de texto plano de la minuta
 import { TODAY_STR, SQUADS, PERSONAS } from './constants'
-import { WEEK, shortName, normalizeSquad, getSprintRoadmap } from './utils'
+import { WEEK, shortName, normalizeSquad, getSprintRoadmap, formatLongDate } from './utils'
 
 export function generateMinuta(wd, analysis, gddData, mqlBreakdown, blockTimes, items) {
   const an = analysis, comps = wd?.compromisos || [];
-  const dateStr = new Date(TODAY_STR).toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  // La minuta se fecha con la fecha de SU weekly, no con "hoy": asi una weekly
+  // vieja que se cierra despues no queda fechada con la fecha de cierre.
+  const dateStr = formatLongDate(wd?.date || TODAY_STR);
   const LINE = "─".repeat(48);
   const arrow = (cur, prev) => { if (!prev) return ""; const p = Math.abs(Math.round(((cur-prev)/prev)*100)); return cur >= prev ? `▲${p}%` : `▼${p}%`; };
   const fmtM = (v) => v >= 1000000 ? `$${(v/1000000).toFixed(1)}M` : v >= 1000 ? `$${(v/1000).toFixed(0)}K` : `$${v||0}`;

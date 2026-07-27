@@ -1,7 +1,7 @@
 'use client'
 import React, { useState, useRef } from 'react'
 import { SQUADS, STORE_KEY, PERSONAS, TODAY } from '../lib/constants'
-import { shortName, parseTL, daysDiff, normalizeSquad, copyToClipboard, normalizeFocos } from '../lib/utils'
+import { shortName, parseTL, daysDiff, normalizeSquad, copyToClipboard, normalizeFocos, formatLongDate } from '../lib/utils'
 import { storeSet } from '../lib/storage'
 import { authHeaders } from '../lib/api'
 import { generateMinuta } from '../lib/minuta'
@@ -166,7 +166,10 @@ function renderMinutaVisual(text, wd2, an, gdd2) {
         }
       }
       const prefix = (it.name || "").split("|")[0].trim().toUpperCase();
-      const prefixMap = { "CF":"Inbound","PE":"Portafolio","NC":"Portafolio","UPAX":"Performance","MU":"Performance","HF":"Portafolio","MX":"Portafolio","ZS":"RevOps","UX":"RevOps" };
+      // Etiquetas cortas (primer palabra del nombre del squad) para items sin squad
+      // ni responsable reconocible. Reorg jul-2026: CF era Inbound → hoy Performance;
+      // UPAX/MU eran el Performance de Iris → hoy Web.
+      const prefixMap = { "CF":"Performance","PE":"Portafolio","NC":"Portafolio","UPAX":"Web","MU":"Web","HF":"Portafolio","MX":"Portafolio","ZS":"RevOps","UX":"RevOps" };
       if (prefixMap[prefix]) return prefixMap[prefix];
       return "—";
     };
@@ -367,7 +370,7 @@ function PdfButton({ text, dateStr, wd, analysis, gddData }) {
     const pTotal = a.pipeline_mkt || 0;
     const fmtN = (v) => (v||0).toLocaleString("es-MX");
     const fmtM = (v) => v >= 1000000 ? "$"+(v/1000000).toFixed(1)+"M" : v >= 1000 ? "$"+(v/1000).toFixed(0)+"K" : "$"+(v||0);
-    const dateLabel = new Date(dateStr).toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+    const dateLabel = formatLongDate(dateStr);
     // Rango de la semana pasada = (semana_desde - 7) … (semana_desde - 1).
     const prevRange = (() => {
       if (!f.semana_desde) return "";
@@ -661,7 +664,7 @@ function SlackButton({ text, captureRef, dateStr }) {
       }
       if (!blob) throw new Error("No se pudo generar la imagen");
 
-      const dateLabel = new Date(dateStr).toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+      const dateLabel = formatLongDate(dateStr);
       const initialComment = `📋 *Weekly Mkt Corp · UPAX*\nMinuta del ${dateLabel}`;
 
       const fd = new FormData();
@@ -713,7 +716,7 @@ function MinutaDetailView({ weekKey, data, todayWd, todayAnalysis, gddData, bloc
   const visualRef = useRef(null);
   const displayText = editMode ? editText : rawText;
   const dateStr = weekKey.replace("weekly:", "");
-  const dateFmt = new Date(dateStr).toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  const dateFmt = formatLongDate(dateStr);
 
   async function handleSave() {
     await storeSet(weekKey, { ...(data || {}), minutaText: editText });

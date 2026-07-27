@@ -4,14 +4,14 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from "react"
 import dynamic from "next/dynamic";
 import {
   TODAY_STR, STORE_KEY, CACHE_KEY,
-  SQUADS, AGENDA, PERSONAS,
+  SQUADS, AGENDA, PERSONAS, WEEKLY_TOTAL_MIN,
   emptyWeekly,
 } from "./lib/constants";
 import {
   normalizeSquad, normalizePersonName, isTeamMember,
   parseTL, addDays, getMondayStr, isOverdue, isActive,
   WEEK, PREV_WEEK,
-  overlapsThisWeek, copyToClipboard,
+  overlapsThisWeek, copyToClipboard, weeklyHasContent,
 } from "./lib/utils";
 import { storeGet, storeSet, storeDel } from "./lib/storage";
 import { fetchAllItems, sendToSlack, authHeaders } from "./lib/api";
@@ -34,6 +34,7 @@ const TabMinutasInline = dynamic(() => import("./components/TabMinutas").then(m 
 const AuditLogPanel = dynamic(() => import("./components/AuditLogPanel").then(m => ({ default: m.AuditLogPanel })), { ssr: false });
 const PhaseModal = dynamic(() => import("./components/PhaseModal").then(m => ({ default: m.PhaseModal })), { ssr: false });
 const MinutaLightbox = dynamic(() => import("./components/MinutaLightbox").then(m => ({ default: m.MinutaLightbox })), { ssr: false });
+const WeekliesEnCurso = dynamic(() => import("./components/WeekliesEnCurso").then(m => ({ default: m.WeekliesEnCurso })), { ssr: false });
 
 /* ═══════════════════════════════════════════════════════════════
    MAIN APP — Orquestador principal
@@ -62,6 +63,7 @@ export default function App() {
   const [confirmReset, setConfirmReset] = useState(false);
   const [auditOpen, setAuditOpen] = useState(false);
   const [minutaLightbox, setMinutaLightbox] = useState(null);
+  const [enCursoOpen, setEnCursoOpen] = useState(false);
   const [copyModal, setCopyModal] = useState(null);
   const [phaseModal, setPhaseModal] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -73,20 +75,97 @@ export default function App() {
   // appGddData: alias directo de hookGddData (eliminado estado espejo innecesario)
   const appGddData = hookGddData;
 
-  const saveFn = useCallback(async (d) => { await storeSet(STORE_KEY, d); }, []);
+  // ── Sesion de la weekly ─────────────────────────────────────────────────────
+  // El progreso del cronometro se persiste junto con wd. Se lee de refs (no del
+  // state) para poder incluirlo en cualquier guardado sin re-crear el debounce en
+  // cada tick del segundero.
+  const elapsedRef = useRef(0);
+  const finishedRef = useRef(false);
+  const startedAtRef = useRef(null);
+  useEffect(() => { elapsedRef.current = elapsed; }, [elapsed]);
+  useEffect(() => { finishedRef.current = finished; }, [finished]);
 
-  // Auto-save debounce 3s
+  // El estado cerrado/abierto lo manda SOLO finishedRef, que restoreSession fija al
+  // cargar (incluyendo las weeklies viejas sin `status` pero con minuta guardada).
+  // No se infiere del registro guardado en cada escritura: eso hacia imposible
+  // reabrir una weekly cerrada, porque cualquier guardado la volvia a marcar finished.
+  // El autosave no corre antes de restoreSession (ver loadedRef), asi que no hay
+  // ventana en la que finishedRef este desactualizado.
+  const withSession = useCallback((base) => ({
+    ...base,
+    status: finishedRef.current ? "finished" : "draft",
+    elapsed: elapsedRef.current,
+    blockTimes: blockTimesRef.current || {},
+    currentBlockIdx: currentBlockIdxRef.current || 0,
+    startedAt: startedAtRef.current || base?.startedAt || null,
+    finishedAt: finishedRef.current ? (base?.finishedAt || new Date().toISOString()) : null,
+  }), []);
+
+  const saveFn = useCallback(async (d) => { await storeSet(STORE_KEY, withSession(d)); }, [withSession]);
+
+  // reopenWeekly — vuelve a abrir la weekly cerrada de hoy sin perder nada
+  // (focos, compromisos y la minuta ya escrita se conservan). Necesario porque el
+  // estado `finished` ahora se persiste: sin esto, una vez cerrada quedaba el panel
+  // de WEEKLY TERMINADA para siempre y no habia forma de retomar la sesion.
+  // Para empezar de cero (borrando capturas) esta "Reset sesion" en el footer.
+  const reopenWeekly = useCallback(async () => {
+    finishedRef.current = false;
+    minutaGeneratedRef.current = false;
+    setFinished(false);
+    setMinutaSaved(false);
+    setSlackStatus(null);
+    const next = { ...(wdRef.current || {}), status: "draft", finishedAt: null };
+    setWd(next);
+    await storeSet(STORE_KEY, withSession(next));
+  }, [withSession]);
+
+  // restoreSession — reconstruye el estado del cronometro (y el panel de minuta si
+  // ya estaba cerrada) desde la weekly guardada.
+  const restoreSession = useCallback((w) => {
+    const el = w.elapsed || 0;
+    setElapsed(el); elRef.current = el;
+    setBlockTimes(w.blockTimes || {});
+    setCurrentBlockIdx(w.currentBlockIdx || 0);
+    startedAtRef.current = w.startedAt || null;
+    // Weeklies viejas (sin `status`) que ya tienen minuta guardada estaban cerradas.
+    const wasFinished = w.status === "finished" || (!w.status && !!w.minutaText);
+    if (wasFinished) {
+      finishedRef.current = true;
+      setFinished(true);
+      if (w.minutaText) {
+        // Evita que el efecto de generacion sobreescriba la minuta ya editada.
+        minutaGeneratedRef.current = true;
+        setMinutaDraft(w.minutaText);
+        setMinutaSaved(true);
+      }
+    }
+  }, []);
+
+  // Auto-save debounce 3s.
+  //
+  // loadedRef es un guard contra perdida de datos: `wd` arranca como emptyWeekly(),
+  // asi que si la lectura de Upstash tarda mas de 3s este autosave escribia la
+  // weekly VACIA encima de la guardada y se perdian los focos del dia. No se guarda
+  // nada hasta que la carga inicial haya puesto el wd real.
+  //
+  // Deps a proposito SIN `elapsed`: si el segundero entrara aqui el debounce se
+  // reiniciaria cada segundo y nunca llegaria a guardar. El elapsed se persiste por
+  // el interval de 60s de abajo y en pause/finish, y se lee via elapsedRef.
   const autoSaveRef = useRef(null);
+  const loadedRef = useRef(false);
   useEffect(() => {
+    if (!loadedRef.current) return;
     if (!wd || !wd.date) return;
     clearTimeout(autoSaveRef.current);
     autoSaveRef.current = setTimeout(() => {
-      storeSet(STORE_KEY, { ...wd, gdd_snapshot: appGddData }).catch(() => {});
+      storeSet(STORE_KEY, withSession({ ...wd, gdd_snapshot: appGddData })).catch(() => {});
     }, 3000);
     return () => clearTimeout(autoSaveRef.current);
-  }, [wd]);
+  }, [wd, finished, withSession]);
 
   const block = AGENDA[currentBlockIdx] || AGENDA[AGENDA.length - 1];
+  // enCurso — la weekly de hoy ya tiene algo capturado y no se ha cerrado.
+  const enCurso = !finished && weeklyHasContent(wd);
 
   const advanceBlock = useCallback((direction) => {
     setCurrentBlockIdx((prev) => {
@@ -125,6 +204,7 @@ export default function App() {
     startRef.current = Date.now();
     elRef.current = elapsed;
     if (!blockStartRef.current) blockStartRef.current = Date.now();
+    if (!startedAtRef.current) startedAtRef.current = new Date().toISOString();
     setRunning(true);
     if (elapsed === 0) { setTab("panorama"); setCurrentBlockIdx(1); }
   }, [elapsed]);
@@ -137,7 +217,10 @@ export default function App() {
       setBlockTimes((bt) => ({ ...bt, [block.id]: (bt[block.id] || 0) + spent }));
       blockStartRef.current = null;
     }
-  }, [block]);
+    // Guardado inmediato: el debounce de 3s no cubre el caso de cerrar la pestaña
+    // justo despues de pausar, y ahi se perdia el progreso del cronometro.
+    storeSet(STORE_KEY, withSession(wdRef.current || wd)).catch(() => {});
+  }, [block, withSession, wd]);
 
   const finishTimer = useCallback(() => {
     setRunning(false);
@@ -147,6 +230,7 @@ export default function App() {
       setBlockTimes((bt) => ({ ...bt, [block.id]: (bt[block.id] || 0) + spent }));
       blockStartRef.current = null;
     }
+    finishedRef.current = true; // antes del storeSet del efecto de minuta
     setFinished(true);
     setMinutaSaved(false);
   }, [block]);
@@ -162,10 +246,29 @@ export default function App() {
       const draft = generateMinuta(wdRef.current, analysisRef.current, appGddData, mqlBreakdown, blockTimesRef.current, items);
       setMinutaDraft(draft);
       if (!wdRef.current?.minutaText) {
-        storeSet(STORE_KEY, { ...wdRef.current, minutaText: draft, gdd_snapshot: appGddData, analysis_snapshot: analysisRef.current });
+        storeSet(STORE_KEY, withSession({ ...wdRef.current, minutaText: draft, gdd_snapshot: appGddData, analysis_snapshot: analysisRef.current }));
       }
     }
   }, [finished, appGddData]);
+
+  // Auto-guardado de la minuta: 2s despues de la ultima tecla. Sustituye la
+  // necesidad de apretar GUARDAR; el boton sigue ahi para guardar al instante.
+  const [minutaSaving, setMinutaSaving] = useState(false);
+  const minutaSaveRef = useRef(null);
+  useEffect(() => {
+    if (!finished || !minutaDraft || minutaSaved) return;
+    setMinutaSaving(true);
+    clearTimeout(minutaSaveRef.current);
+    minutaSaveRef.current = setTimeout(async () => {
+      await storeSet(STORE_KEY, withSession({
+        ...wdRef.current, minutaText: minutaDraft,
+        gdd_snapshot: appGddData, analysis_snapshot: analysisRef.current,
+      }));
+      setMinutaSaving(false);
+      setMinutaSaved(true);
+    }, 2000);
+    return () => clearTimeout(minutaSaveRef.current);
+  }, [minutaDraft, finished, minutaSaved, appGddData, withSession]);
 
   useEffect(() => {
     if (running) {
@@ -180,9 +283,9 @@ export default function App() {
 
   useEffect(() => {
     if (!running) return;
-    const as = setInterval(() => storeSet(STORE_KEY, wd), 60000);
+    const as = setInterval(() => storeSet(STORE_KEY, withSession(wd)), 60000);
     return () => clearInterval(as);
-  }, [running, wd]);
+  }, [running, wd, withSession]);
 
   useEffect(() => {
     if (!running) return;
@@ -234,6 +337,11 @@ export default function App() {
         setLoadingMsg("Buscando cache...");
         const [cached, stored] = await Promise.all([storeGet(CACHE_KEY), storeGet(STORE_KEY)]);
         setWd(stored || emptyWeekly());
+        // Rehidratar la sesion: sin esto el cronometro volvia a 0 y la barra del
+        // timer (con el boton de finalizar) no se renderizaba, dejando la weekly
+        // en curso imposible de cerrar.
+        if (stored) restoreSession(stored);
+        loadedRef.current = true; // habilita el autosave (ver comentario en su effect)
         if (cached?.items?.length > 0) {
           setItems(cached.items);
           const fp0 = cached.items.length * 1000 + parseInt(cached.items[0]?.id || 0) + parseInt(cached.items[cached.items.length-1]?.id || 0);
@@ -243,7 +351,7 @@ export default function App() {
           hasCached = true;
           if (Date.now() - new Date(cached.ts).getTime() > 30 * 60 * 1000) refresh();
         }
-      } catch { setWd(emptyWeekly()); }
+      } catch { setWd(emptyWeekly()); loadedRef.current = true; }
 
       if (hasCached) return;
 
@@ -425,7 +533,10 @@ export default function App() {
       <style>{CSS}</style>
       <a href="#main-content" className="sr-only" style={{ position: "absolute", top: -40, left: 0, background: C.blue, color: "#fff", padding: "8px 16px", zIndex: 9999, borderRadius: "0 0 8px 0", fontWeight: 600, fontSize: 13, textDecoration: "none" }} onFocus={e => e.currentTarget.style.top = "0"} onBlur={e => e.currentTarget.style.top = "-40px"}>Saltar al contenido</a>
 
-      {(running || elapsed > 0) && !finished && (
+      {/* La barra del timer (y con ella el boton ⏹ de finalizar) tambien se muestra
+          si la weekly ya tiene contenido aunque el cronometro nunca haya corrido o
+          se haya recargado la pagina. Antes solo dependia de estado en memoria. */}
+      {(running || elapsed > 0 || enCurso) && !finished && (
         <TimerZone
           elapsed={elapsed} running={running}
           onStart={() => { startRef.current = Date.now(); elRef.current = elapsed; if (!blockStartRef.current) blockStartRef.current = Date.now(); setRunning(true); }}
@@ -464,6 +575,9 @@ export default function App() {
                 if (!document.fullscreenElement) { document.documentElement.requestFullscreen().catch(() => {}); setPresenterMode(true); }
                 else { document.exitFullscreen().catch(() => {}); setPresenterMode(false); }
               }} style={{ background: presenterMode ? C.tx : C.bg2, color: presenterMode ? "#fff" : C.tx3, border: presenterMode ? "none" : `1px solid ${C.bg4}`, borderRadius: R.sm, padding: "3px 10px", fontSize: 10, fontWeight: 500, cursor: "pointer" }} title="Pantalla completa">{presenterMode ? "📺 ON" : "📺"}</button>
+              <button onClick={() => setEnCursoOpen(true)} title="Ver weeklies empezadas y sin cerrar" style={{ background: enCurso ? "rgba(255,214,10,.12)" : C.bg2, color: enCurso ? C.yellow : C.tx3, border: `1px solid ${enCurso ? "rgba(255,214,10,.35)" : C.bg4}`, borderRadius: R.sm, padding: "3px 10px", fontSize: 10, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
+                <span>⏳</span><span>En curso{enCurso ? " · hoy" : ""}</span>
+              </button>
             </div>
           </div>
           <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
@@ -490,12 +604,18 @@ export default function App() {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
               <div>
                 <div style={{ fontSize: 16, fontWeight: 700, color: C.green, fontFamily: F.mono }}>WEEKLY TERMINADA</div>
-                <div style={{ fontSize: 12, color: C.tx3, fontFamily: F.mono, marginTop: 2 }}>{Math.floor(elapsed / 60)}:{String(elapsed % 60).padStart(2, "0")} min · {minutaSaved ? "Guardada" : "Sin guardar"}</div>
+                <div style={{ fontSize: 12, color: C.tx3, fontFamily: F.mono, marginTop: 2 }}>
+                  {Math.floor(elapsed / 60)}:{String(elapsed % 60).padStart(2, "0")} min ·{" "}
+                  <span style={{ color: minutaSaved ? C.green : minutaSaving ? C.yellow : C.tx3 }}>
+                    {minutaSaved ? "Guardada" : minutaSaving ? "Guardando..." : "Sin guardar"}
+                  </span>
+                </div>
               </div>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                {!minutaSaved && <button onClick={async () => { await storeSet(STORE_KEY, { ...wd, minutaText: minutaDraft, gdd_snapshot: appGddData, analysis_snapshot: an }); setMinutaSaved(true); }} style={{ background: C.bg2, color: C.tx2, border: `1px solid ${C.bg4}`, padding: "8px 18px", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: F.mono, textTransform: "uppercase" }}>GUARDAR</button>}
-                <button onClick={async () => { await storeSet(STORE_KEY, { ...wd, minutaText: minutaDraft, gdd_snapshot: appGddData, analysis_snapshot: an }); setMinutaSaved(true); handleCopy(minutaDraft); }} style={{ background: C.tx, color: C.bg, border: "none", padding: "8px 24px", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: F.mono, textTransform: "uppercase" }}>{minutaSaved ? "COPIAR A SLACK" : "GUARDAR + COPIAR"}</button>
-                <button onClick={async () => { await storeSet(STORE_KEY, { ...wd, minutaText: minutaDraft, gdd_snapshot: appGddData, analysis_snapshot: an }); setMinutaSaved(true); setSlackStatus("sending"); const ok = await sendToSlack(minutaDraft); setSlackStatus(ok ? "ok" : "error"); if (!ok) handleCopy(minutaDraft); setTimeout(() => setSlackStatus(null), 4000); }} style={{ background: "linear-gradient(135deg,#4A154B,#611f69)", color: "#fff", border: "none", padding: "8px 20px", borderRadius: R.sm, fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: F.mono, textTransform: "uppercase" }}>ENVIAR A SLACK</button>
+                <button onClick={reopenWeekly} title="Retomar la weekly sin perder focos, compromisos ni la minuta" style={{ background: C.bg2, color: C.yellow, border: `1px solid rgba(255,214,10,.35)`, padding: "8px 16px", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: F.mono, textTransform: "uppercase" }}>↺ REABRIR</button>
+                {!minutaSaved && <button onClick={async () => { await storeSet(STORE_KEY, withSession({ ...wd, minutaText: minutaDraft, gdd_snapshot: appGddData, analysis_snapshot: an })); setMinutaSaved(true); }} style={{ background: C.bg2, color: C.tx2, border: `1px solid ${C.bg4}`, padding: "8px 18px", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: F.mono, textTransform: "uppercase" }}>GUARDAR</button>}
+                <button onClick={async () => { await storeSet(STORE_KEY, withSession({ ...wd, minutaText: minutaDraft, gdd_snapshot: appGddData, analysis_snapshot: an })); setMinutaSaved(true); handleCopy(minutaDraft); }} style={{ background: C.tx, color: C.bg, border: "none", padding: "8px 24px", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: F.mono, textTransform: "uppercase" }}>{minutaSaved ? "COPIAR A SLACK" : "GUARDAR + COPIAR"}</button>
+                <button onClick={async () => { await storeSet(STORE_KEY, withSession({ ...wd, minutaText: minutaDraft, gdd_snapshot: appGddData, analysis_snapshot: an })); setMinutaSaved(true); setSlackStatus("sending"); const ok = await sendToSlack(minutaDraft); setSlackStatus(ok ? "ok" : "error"); if (!ok) handleCopy(minutaDraft); setTimeout(() => setSlackStatus(null), 4000); }} style={{ background: "linear-gradient(135deg,#4A154B,#611f69)", color: "#fff", border: "none", padding: "8px 20px", borderRadius: R.sm, fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: F.mono, textTransform: "uppercase" }}>ENVIAR A SLACK</button>
               </div>
             </div>
             <textarea value={minutaDraft} onChange={(e) => { setMinutaDraft(e.target.value); setMinutaSaved(false); }} style={{ width: "100%", minHeight: 280, background: C.bg2, color: C.tx, border: `1px solid ${C.bg4}`, padding: 16, fontSize: 12, fontFamily: F.mono, resize: "vertical", outline: "none", lineHeight: 1.7 }} />
@@ -511,7 +631,7 @@ export default function App() {
           </Card>
         )}
 
-        {eMin >= 60 && !finished && (
+        {eMin >= WEEKLY_TOTAL_MIN && !finished && (
           <div style={{ background: "rgba(255,69,58,.06)", border: "0.3px solid rgba(255,69,58,.2)", borderLeft: `2px solid ${C.red}`, padding: "10px 14px", marginBottom: 12, display: "flex", alignItems: "center", gap: 8, fontSize: 12 }}>
             <span style={{ color: C.red, fontWeight: 600 }}>Overtime</span>
             <span style={{ color: C.tx3 }}>→ ⏹ para cerrar</span>
@@ -574,6 +694,10 @@ export default function App() {
                 setWd(emptyWeekly()); setFinished(false); setMinutaDraft(""); setMinutaSaved(false);
                 setElapsed(0); elRef.current = 0; setCurrentBlockIdx(0); setBlockTimes({});
                 blockStartRef.current = null; setSlackStatus(null); setConfirmReset(false);
+                // Las refs de sesion tambien: si no, el siguiente autosave volvia a
+                // escribir la weekly como finished/con startedAt viejo.
+                finishedRef.current = false; startedAtRef.current = null;
+                elapsedRef.current = 0; minutaGeneratedRef.current = false;
               }} style={{ background: C.red, color: "#fff", border: "none", borderRadius: 8, padding: "5px 16px", fontSize: 12, fontWeight: 600, cursor: "pointer", flexShrink: 0 }}>Si, resetear</button>
               <button onClick={() => setConfirmReset(false)} style={{ background: C.bg3, color: C.tx2, border: "none", borderRadius: 8, padding: "5px 16px", fontSize: 12, cursor: "pointer" }}>Cancelar</button>
             </div>
@@ -595,6 +719,14 @@ export default function App() {
       {copyModal && <CopyModal text={copyModal} onClose={() => setCopyModal(null)} />}
 
       <PhaseModal phaseModal={phaseModal} onClose={() => setPhaseModal(null)} />
+
+      {enCursoOpen && (
+        <WeekliesEnCurso
+          onClose={() => setEnCursoOpen(false)}
+          onOpenMinuta={(key, data) => { setEnCursoOpen(false); document.body.style.overflow = "hidden"; setMinutaLightbox({ key, data, editMode: false }); }}
+          onFinalizeToday={finishTimer}
+        />
+      )}
 
       <MinutaLightbox
         minutaLightbox={minutaLightbox}

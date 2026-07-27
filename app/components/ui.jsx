@@ -324,11 +324,19 @@ export function SquadInputSection({ label, icon, field, placeholder, rows, draft
 
 // RepeatableItems — lista de items editables (cada uno se guarda por separado).
 // withMeta=true agrega owner (PersonSelect) y fecha por item (para Blocker/Necesito).
+//
+// UX: la lista se auto-extiende. En cuanto se escribe en el ultimo campo aparece
+// otro campo vacio debajo, asi que NO hay boton "+ agregar": la invariante es que
+// siempre haya exactamente un campo vacio al final donde seguir capturando.
 export function RepeatableItems({ icon, label, placeholder, items, onChange, withMeta }) {
   const list = items && items.length ? items : [{ text: "" }];
-  const update = (i, patch) => onChange(list.map((it, idx) => (idx === i ? { ...it, ...patch } : it)));
-  const add = () => onChange([...list, { text: "" }]);
-  const remove = (i) => { const next = list.filter((_, idx) => idx !== i); onChange(next.length ? next : [{ text: "" }]); };
+  // withTrailingBlank — mantiene la invariante del campo vacio final.
+  const withTrailingBlank = (arr) => {
+    if (!arr.length) return [{ text: "" }];
+    return arr[arr.length - 1].text?.trim() ? [...arr, { text: "" }] : arr;
+  };
+  const update = (i, patch) => onChange(withTrailingBlank(list.map((it, idx) => (idx === i ? { ...it, ...patch } : it))));
+  const remove = (i) => onChange(withTrailingBlank(list.filter((_, idx) => idx !== i)));
   return (
     <div style={{ marginBottom: 12 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
@@ -350,7 +358,6 @@ export function RepeatableItems({ icon, label, placeholder, items, onChange, wit
           {list.length > 1 && <button type="button" onClick={() => remove(i)} aria-label="Quitar item" style={{ background: "none", border: "none", color: C.tx3, cursor: "pointer", fontSize: 14, padding: "0 4px", lineHeight: 1 }}>✕</button>}
         </div>
       ))}
-      <button type="button" onClick={add} style={{ background: "none", border: "none", color: C.blue, cursor: "pointer", fontSize: 11, fontWeight: 600, padding: "2px 0" }}>+ agregar {label.toLowerCase()}</button>
     </div>
   );
 }

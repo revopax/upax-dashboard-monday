@@ -178,7 +178,9 @@ const TabFocos = React.memo(function TabFocos({ items, wd, setWd, save, activeSq
                     onClick={() => {
                       setDraft(prev => ({
                         ...prev,
-                        focosList: [...(prev.focosList || []).filter(x => x.text?.trim()), { text: it.name }]
+                        // El { text: "" } final mantiene la invariante de RepeatableItems
+                        // (siempre un campo vacio al final, ya no hay boton "+ agregar").
+                        focosList: [...(prev.focosList || []).filter(x => x.text?.trim()), { text: it.name }, { text: "" }]
                       }));
                       setShowForm(true);
                     }}
