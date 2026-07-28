@@ -130,9 +130,12 @@ export function generateMinuta(wd, analysis, gddData, mqlBreakdown, blockTimes, 
       t += `\n   ${sq.name.toUpperCase()} (${presenter})\n`;
       filled.forEach(f => {
         if (f.focos?.trim()) {
+          // El owner se anota solo en la ultima linea cuando el foco venia con varios
+          // numerados: aplica al foco completo, no a cada sub-linea.
+          const owner = f.focos_quien ? ` — ${shortName(f.focos_quien)}` : "";
           const parts = f.focos.split(/\d+\)/).map(s => s.trim()).filter(Boolean);
-          if (parts.length > 1) parts.forEach(l => { t += `   · ${l}\n`; });
-          else t += `   · ${f.focos.trim()}\n`;
+          if (parts.length > 1) parts.forEach((l, li) => { t += `   · ${l}${li === parts.length - 1 ? owner : ""}\n`; });
+          else t += `   · ${f.focos.trim()}${owner}\n`;
         }
         if (f.blocker?.trim()) {
           t += `   ⚠ BLOCKER: ${f.blocker.trim()}`;

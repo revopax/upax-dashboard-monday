@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react'
 // components/TabMinutas.jsx — Lista de minutas (TabMinutasInline), agrupada por mes.
 import { STORE_KEY, TODAY_STR } from '../lib/constants'
-import { copyToClipboard, formatLongDate, formatMonthYear } from '../lib/utils'
+import { copyToClipboard, formatLongDate, formatMonthYear, migrateWeekly } from '../lib/utils'
 import { storeGet, storeDel, storeList } from '../lib/storage'
 import { generateMinuta } from '../lib/minuta'
 import { C, R, F } from '../lib/tokens'
@@ -45,14 +45,14 @@ const TabMinutasInline = React.memo(function TabMinutasInline({ wd, analysis, gd
   }, [keys]);
 
   async function openMinuta(k, editMode = false) {
-    const d = await storeGet(k);
+    const d = migrateWeekly(await storeGet(k));
     document.body.style.overflow = "hidden";
     onOpenMinuta(k, d, editMode);
   }
 
   async function copyMinuta(k, e) {
     e.stopPropagation();
-    const d = await storeGet(k);
+    const d = migrateWeekly(await storeGet(k));
     const text = d?.minutaText || generateMinuta(d, null, gddData, blockTimes);
     copyToClipboard(text);
     setCopied(k);

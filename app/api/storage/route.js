@@ -69,6 +69,50 @@ export async function GET(request) {
       return NextResponse.json({ keys: allKeys })
     }
 
+    // action=weeklies — resumen ligero de TODAS las weeklies en una sola llamada.
+    //
+    // Existe para no tener que hacer un GET por clave (~65 requests) solo para saber
+    // si hay weeklies en curso. Devuelve una proyeccion: los registros completos
+    // pesan ~80KB cada uno (gdd_snapshot + analysis_snapshot + minutaText), asi que
+    // mandarlos todos serian varios MB. El predicado de "en curso" se aplica en el
+    // cliente (lib/utils.js) para no duplicar la regla aqui.
+    if (action === 'weeklies') {
+      const allKeys = []
+      let cursor = '0'
+      do {
+        const result = await upstash('SCAN', cursor, 'MATCH', 'weekly:*', 'COUNT', '100')
+        if (result === null) break
+        cursor = String(result[0])
+        if (Array.isArray(result[1])) allKeys.push(...result[1])
+      } while (cursor !== '0')
+
+      // Solo weeklies reales: descarta los backups `weekly:<fecha>:before_reset`.
+      const keys = allKeys.filter(k => /^weekly:\d{4}-\d{2}-\d{2}$/.test(k)).sort().reverse()
+      if (keys.length === 0) return NextResponse.json({ weeklies: [] })
+
+      const values = await upstash('MGET', ...keys)
+      const weeklies = keys.map((k, i) => {
+        let w = values?.[i]
+        if (typeof w === 'string') { try { w = JSON.parse(w) } catch { w = null } }
+        if (!w) return null
+        const focos = w.focos || {}
+        const focosCount = Object.values(focos).reduce((n, e) => n + (Array.isArray(e) ? e.length : e ? 1 : 0), 0)
+        return {
+          key: k,
+          startedAt: w.startedAt || null,
+          elapsed: w.elapsed || 0,
+          status: w.status || null,
+          // Boolean en vez del texto: weeklyClosed() solo lo evalua como truthy.
+          minutaText: !!w.minutaText,
+          focosCount,
+          squadsCount: Object.keys(focos).length,
+          compromisosCount: (w.compromisos || []).filter(c => c?.que?.trim()).length,
+        }
+      }).filter(Boolean)
+
+      return NextResponse.json({ weeklies })
+    }
+
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
   } catch (error) {
     console.error('Storage GET error:', error.message)

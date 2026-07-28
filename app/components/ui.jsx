@@ -323,12 +323,17 @@ export function SquadInputSection({ label, icon, field, placeholder, rows, draft
 }
 
 // RepeatableItems — lista de items editables (cada uno se guarda por separado).
-// withMeta=true agrega owner (PersonSelect) y fecha por item (para Blocker/Necesito).
+//   withMeta  = owner (PersonSelect) + fecha por item (Blocker / Necesito)
+//   withOwner = solo owner, acotado a `squad` (Focos)
 //
-// UX: la lista se auto-extiende. En cuanto se escribe en el ultimo campo aparece
-// otro campo vacio debajo, asi que NO hay boton "+ agregar": la invariante es que
-// siempre haya exactamente un campo vacio al final donde seguir capturando.
-export function RepeatableItems({ icon, label, placeholder, items, onChange, withMeta }) {
+// UX: no hay boton "+ agregar". La lista crece de dos formas, y ninguna es infinita:
+//   1. Al escribir en el ultimo campo se abre uno vacio abajo, para no quedarse sin
+//      donde capturar.
+//   2. Al hacer clic en un campo vacio se abre otro, PERO solo si ese era el unico
+//      vacio. Con dos vacios abiertos, hacer clic en cualquiera no agrega nada: hay
+//      que llenar uno antes de poder pedir otro. Sin esa condicion, cada clic
+//      agregaba una fila y la lista crecia sin control.
+export function RepeatableItems({ icon, label, placeholder, items, onChange, withMeta, withOwner, squad }) {
   const list = items && items.length ? items : [{ text: "" }];
   // withTrailingBlank — mantiene la invariante del campo vacio final.
   const withTrailingBlank = (arr) => {
@@ -337,6 +342,13 @@ export function RepeatableItems({ icon, label, placeholder, items, onChange, wit
   };
   const update = (i, patch) => onChange(withTrailingBlank(list.map((it, idx) => (idx === i ? { ...it, ...patch } : it))));
   const remove = (i) => onChange(withTrailingBlank(list.filter((_, idx) => idx !== i)));
+
+  const isBlank = (it) => !it.text?.trim();
+  const handleFocus = (i) => {
+    if (!isBlank(list[i])) return;                      // solo desde un campo vacio
+    if (list.filter(isBlank).length > 1) return;        // ya hay otro vacio libre
+    onChange([...list, { text: "" }]);
+  };
   return (
     <div style={{ marginBottom: 12 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
@@ -350,9 +362,11 @@ export function RepeatableItems({ icon, label, placeholder, items, onChange, wit
             onChange={(e) => update(i, { text: e.target.value })}
             placeholder={placeholder}
             style={{ flex: "1 1 200px", minWidth: 140, background: C.bg, border: "1.5px solid var(--bg4)", borderRadius: 8, padding: "8px 10px", fontSize: 13, fontFamily: F.sans, color: C.tx, outline: "none", boxSizing: "border-box" }}
-            onFocus={(e) => { e.target.style.borderColor = C.blue; }}
+            onFocus={(e) => { e.target.style.borderColor = C.blue; handleFocus(i); }}
             onBlur={(e) => { e.target.style.borderColor = C.bg4; }}
           />
+          {/* Owner del foco, acotado al squad para que solo salga su gente. */}
+          {withOwner && <PersonSelect value={it.quien || ""} onChange={(e) => update(i, { quien: e.target.value })} squad={squad} style={{ flex: "0 0 auto", fontSize: 11, minWidth: 130 }} />}
           {withMeta && <PersonSelect value={it.quien || ""} onChange={(e) => update(i, { quien: e.target.value })} style={{ flex: "0 0 auto", fontSize: 11 }} />}
           {withMeta && <input type="date" value={it.cuando || ""} onChange={(e) => update(i, { cuando: e.target.value })} style={{ background: C.bg, border: "1px solid var(--bg4)", borderRadius: 6, padding: "6px", fontSize: 10, color: C.tx, outline: "none" }} />}
           {list.length > 1 && <button type="button" onClick={() => remove(i)} aria-label="Quitar item" style={{ background: "none", border: "none", color: C.tx3, cursor: "pointer", fontSize: 14, padding: "0 4px", lineHeight: 1 }}>✕</button>}

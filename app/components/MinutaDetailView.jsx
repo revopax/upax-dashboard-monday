@@ -287,10 +287,13 @@ function renderMinutaVisual(text, wd2, an, gdd2) {
                 <div style={{ padding:"6px 16px 0" }}>
                   {arr.filter(f=>f.focos?.trim()).map((f,i) => {
                     const parts = f.focos.split(/\d+\)/).map(s=>s.trim()).filter(Boolean);
-                    return (parts.length>1?parts:[f.focos.trim()]).map((p,j) => (
+                    const lines = parts.length>1?parts:[f.focos.trim()];
+                    return lines.map((p,j) => (
                       <div key={i+"-"+j} style={{ display:"flex", gap:8, padding:"4px 0", borderBottom:`1px solid ${C.bg3}`, alignItems:"flex-start" }}>
                         <span style={{ color:sq.color, fontWeight:700, flexShrink:0, marginTop:1 }}>·</span>
                         <span style={{ fontSize:13, color:C.tx2, lineHeight:1.5 }}>{p}</span>
+                        {/* El owner va solo en la ultima linea: aplica al foco entero. */}
+                        {f.focos_quien && j === lines.length-1 && <span style={{ fontSize:11, color:C.tx3, marginLeft:"auto", flexShrink:0, whiteSpace:"nowrap" }}>{shortName(f.focos_quien)}</span>}
                       </div>
                     ));
                   })}

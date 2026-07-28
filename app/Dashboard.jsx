@@ -11,9 +11,9 @@ import {
   normalizeSquad, normalizePersonName, isTeamMember,
   parseTL, addDays, getMondayStr, isOverdue, isActive,
   WEEK, PREV_WEEK,
-  overlapsThisWeek, copyToClipboard, weeklyHasContent,
+  overlapsThisWeek, copyToClipboard, weeklyClosed, isWeeklyEnCurso, migrateWeekly,
 } from "./lib/utils";
-import { storeGet, storeSet, storeDel } from "./lib/storage";
+import { storeGet, storeSet, storeDel, storeWeeklies } from "./lib/storage";
 import { fetchAllItems, sendToSlack, authHeaders } from "./lib/api";
 import { generateMinuta } from "./lib/minuta";
 import { CSS } from "./lib/css";
@@ -64,6 +64,9 @@ export default function App() {
   const [auditOpen, setAuditOpen] = useState(false);
   const [minutaLightbox, setMinutaLightbox] = useState(null);
   const [enCursoOpen, setEnCursoOpen] = useState(false);
+  // Cuántas weeklies (de cualquier fecha) están iniciadas y sin cerrar. Decide si el
+  // botón "En curso" se muestra: si no hay ninguna, no tiene sentido ofrecerlo.
+  const [enCursoCount, setEnCursoCount] = useState(0);
   const [copyModal, setCopyModal] = useState(null);
   const [phaseModal, setPhaseModal] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -119,6 +122,15 @@ export default function App() {
     await storeSet(STORE_KEY, withSession(next));
   }, [withSession]);
 
+  // refreshEnCurso — recuenta las weeklies iniciadas y sin cerrar. Una sola request
+  // (storeWeeklies devuelve una proyeccion ligera de todas), no un GET por clave.
+  // La de hoy se evalua con el estado en memoria, que puede ir por delante del store.
+  const refreshEnCurso = useCallback(async () => {
+    const list = await storeWeeklies();
+    const otras = list.filter((w) => w.key !== STORE_KEY && isWeeklyEnCurso(w)).length;
+    setEnCursoCount(otras + (enCursoRef.current ? 1 : 0));
+  }, []);
+
   // restoreSession — reconstruye el estado del cronometro (y el panel de minuta si
   // ya estaba cerrada) desde la weekly guardada.
   const restoreSession = useCallback((w) => {
@@ -127,9 +139,10 @@ export default function App() {
     setBlockTimes(w.blockTimes || {});
     setCurrentBlockIdx(w.currentBlockIdx || 0);
     startedAtRef.current = w.startedAt || null;
-    // Weeklies viejas (sin `status`) que ya tienen minuta guardada estaban cerradas.
-    const wasFinished = w.status === "finished" || (!w.status && !!w.minutaText);
-    if (wasFinished) {
+    // Solo se restaura como cerrada si de verdad llego a existir: una weekly que
+    // nunca se inicio y no tiene minuta no puede estar "terminada" — quedaban asi
+    // registros fantasma que mostraban el panel de WEEKLY TERMINADA en un dia limpio.
+    if (weeklyClosed(w)) {
       finishedRef.current = true;
       setFinished(true);
       if (w.minutaText) {
@@ -164,8 +177,17 @@ export default function App() {
   }, [wd, finished, withSession]);
 
   const block = AGENDA[currentBlockIdx] || AGENDA[AGENDA.length - 1];
-  // enCurso — la weekly de hoy ya tiene algo capturado y no se ha cerrado.
-  const enCurso = !finished && weeklyHasContent(wd);
+  // enCurso — la weekly de hoy se INICIO (boton ▶) y no se ha cerrado.
+  // Se mira startedAt/elapsed, nunca el contenido capturado: ver weeklyStarted().
+  const enCurso = !finished && (running || elapsed > 0 || !!startedAtRef.current);
+  const enCursoRef = useRef(false);
+  useEffect(() => { enCursoRef.current = enCurso; }, [enCurso]);
+  // Recontar cuando la weekly de hoy se inicia o se cierra, para que el boton
+  // aparezca/desaparezca al momento. En el mount lo dispara la carga inicial.
+  useEffect(() => {
+    if (!loadedRef.current) return;
+    refreshEnCurso();
+  }, [enCurso, refreshEnCurso]);
 
   const advanceBlock = useCallback((direction) => {
     setCurrentBlockIdx((prev) => {
@@ -177,7 +199,10 @@ export default function App() {
       }
       blockStartRef.current = Date.now();
       const nextBlock = AGENDA[next];
-      setTab(nextBlock.tab);
+      // Si estas parado en la Agenda, avanzar de bloque NO te saca de ahi: ningun
+      // bloque tiene tab "agenda", asi que cambiar de tab la hacia inalcanzable en
+      // cuanto usabas ⏮/⏭. Desde cualquier otra pestaña se sigue el flujo normal.
+      setTab((t) => (t === "agenda" ? t : nextBlock.tab));
       if (nextBlock.sq && nextBlock.sq !== "cross") setActiveSquad(nextBlock.sq);
       return next;
     });
@@ -186,7 +211,11 @@ export default function App() {
   const currentBlockIdxRef = useRef(currentBlockIdx);
   useEffect(() => { currentBlockIdxRef.current = currentBlockIdx; }, [currentBlockIdx]);
 
-  const jumpToBlock = useCallback((idx) => {
+  // jumpToBlock(idx, { keepTab }) — avanza al bloque idx.
+  // keepTab evita el cambio de pestaña: la Agenda lo usa para su boton "Siguiente",
+  // porque ningun bloque tiene tab "agenda" y saltar te expulsaba de la pantalla
+  // justo cuando estabas asignando presentadores.
+  const jumpToBlock = useCallback((idx, opts) => {
     if (idx < 0 || idx >= AGENDA.length) return;
     if (blockStartRef.current) {
       const prevIdx = currentBlockIdxRef.current;
@@ -196,7 +225,8 @@ export default function App() {
     blockStartRef.current = Date.now();
     setCurrentBlockIdx(idx);
     const b = AGENDA[idx];
-    setTab(b.tab);
+    if (!opts?.keepTab) setTab(b.tab);
+    // El squad activo se sincroniza igual, para que al pasar a Focos ya este puesto.
     if (b.sq && b.sq !== "cross") setActiveSquad(b.sq);
   }, []);
 
@@ -204,10 +234,15 @@ export default function App() {
     startRef.current = Date.now();
     elRef.current = elapsed;
     if (!blockStartRef.current) blockStartRef.current = Date.now();
-    if (!startedAtRef.current) startedAtRef.current = new Date().toISOString();
+    if (!startedAtRef.current) {
+      startedAtRef.current = new Date().toISOString();
+      // Persistir ya: startedAt es lo unico que marca la weekly como iniciada, y es
+      // un ref, asi que no dispara el autosave por si solo.
+      storeSet(STORE_KEY, withSession(wdRef.current || {})).catch(() => {});
+    }
     setRunning(true);
     if (elapsed === 0) { setTab("panorama"); setCurrentBlockIdx(1); }
-  }, [elapsed]);
+  }, [elapsed, withSession]);
 
   const pauseTimer = useCallback(() => {
     setRunning(false);
@@ -335,13 +370,16 @@ export default function App() {
       let hasCached = false;
       try {
         setLoadingMsg("Buscando cache...");
-        const [cached, stored] = await Promise.all([storeGet(CACHE_KEY), storeGet(STORE_KEY)]);
+        const [cached, rawStored] = await Promise.all([storeGet(CACHE_KEY), storeGet(STORE_KEY)]);
+        // migrateWeekly normaliza shapes viejos al leer (ver utils.js).
+        const stored = rawStored ? migrateWeekly(rawStored) : null;
         setWd(stored || emptyWeekly());
         // Rehidratar la sesion: sin esto el cronometro volvia a 0 y la barra del
         // timer (con el boton de finalizar) no se renderizaba, dejando la weekly
         // en curso imposible de cerrar.
         if (stored) restoreSession(stored);
         loadedRef.current = true; // habilita el autosave (ver comentario en su effect)
+        refreshEnCurso();
         if (cached?.items?.length > 0) {
           setItems(cached.items);
           const fp0 = cached.items.length * 1000 + parseInt(cached.items[0]?.id || 0) + parseInt(cached.items[cached.items.length-1]?.id || 0);
@@ -533,10 +571,10 @@ export default function App() {
       <style>{CSS}</style>
       <a href="#main-content" className="sr-only" style={{ position: "absolute", top: -40, left: 0, background: C.blue, color: "#fff", padding: "8px 16px", zIndex: 9999, borderRadius: "0 0 8px 0", fontWeight: 600, fontSize: 13, textDecoration: "none" }} onFocus={e => e.currentTarget.style.top = "0"} onBlur={e => e.currentTarget.style.top = "-40px"}>Saltar al contenido</a>
 
-      {/* La barra del timer (y con ella el boton ⏹ de finalizar) tambien se muestra
-          si la weekly ya tiene contenido aunque el cronometro nunca haya corrido o
-          se haya recargado la pagina. Antes solo dependia de estado en memoria. */}
-      {(running || elapsed > 0 || enCurso) && !finished && (
+      {/* La barra del timer (con el ⏹ de finalizar) aparece solo si la weekly se
+          inicio explicitamente. Sobrevive a un reload porque startedAt/elapsed se
+          persisten; lo que NO hace es deducirla de que haya datos capturados. */}
+      {enCurso && (
         <TimerZone
           elapsed={elapsed} running={running}
           onStart={() => { startRef.current = Date.now(); elRef.current = elapsed; if (!blockStartRef.current) blockStartRef.current = Date.now(); setRunning(true); }}
@@ -575,9 +613,13 @@ export default function App() {
                 if (!document.fullscreenElement) { document.documentElement.requestFullscreen().catch(() => {}); setPresenterMode(true); }
                 else { document.exitFullscreen().catch(() => {}); setPresenterMode(false); }
               }} style={{ background: presenterMode ? C.tx : C.bg2, color: presenterMode ? "#fff" : C.tx3, border: presenterMode ? "none" : `1px solid ${C.bg4}`, borderRadius: R.sm, padding: "3px 10px", fontSize: 10, fontWeight: 500, cursor: "pointer" }} title="Pantalla completa">{presenterMode ? "📺 ON" : "📺"}</button>
-              <button onClick={() => setEnCursoOpen(true)} title="Ver weeklies empezadas y sin cerrar" style={{ background: enCurso ? "rgba(255,214,10,.12)" : C.bg2, color: enCurso ? C.yellow : C.tx3, border: `1px solid ${enCurso ? "rgba(255,214,10,.35)" : C.bg4}`, borderRadius: R.sm, padding: "3px 10px", fontSize: 10, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
-                <span>⏳</span><span>En curso{enCurso ? " · hoy" : ""}</span>
-              </button>
+              {/* Solo si hay al menos una weekly iniciada y sin cerrar. */}
+              {enCursoCount > 0 && (
+                <button onClick={() => setEnCursoOpen(true)} title="Ver weeklies empezadas y sin cerrar" style={{ background: "rgba(255,214,10,.12)", color: C.yellow, border: "1px solid rgba(255,214,10,.35)", borderRadius: R.sm, padding: "3px 10px", fontSize: 10, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
+                  <span>⏳</span><span>En curso</span>
+                  <span style={{ fontFamily: F.mono, background: C.yellow, color: "#fff", borderRadius: 8, padding: "0 5px", fontSize: 9 }}>{enCursoCount}</span>
+                </button>
+              )}
             </div>
           </div>
           <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
@@ -725,6 +767,7 @@ export default function App() {
           onClose={() => setEnCursoOpen(false)}
           onOpenMinuta={(key, data) => { setEnCursoOpen(false); document.body.style.overflow = "hidden"; setMinutaLightbox({ key, data, editMode: false }); }}
           onFinalizeToday={finishTimer}
+          onChanged={refreshEnCurso}
         />
       )}
 

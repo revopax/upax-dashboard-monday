@@ -38,6 +38,17 @@ export async function storeDel(key) {
     })
   } catch {}
 }
+// storeWeeklies — resumen ligero de todas las weeklies en UNA sola request.
+// Devuelve [{ key, startedAt, elapsed, status, minutaText, focosCount, ... }].
+// Pensado para poder evaluar isWeeklyEnCurso() sin traerse los registros completos.
+export async function storeWeeklies() {
+  try {
+    const r = await fetch('/api/storage?action=weeklies', { headers: authHeadersGet() })
+    const d = await r.json()
+    return Array.isArray(d.weeklies) ? d.weeklies : []
+  } catch { return [] }
+}
+
 export async function storeList(prefix) {
   try {
     const r = await fetch(`/api/storage?action=list&prefix=${encodeURIComponent(prefix)}`, { headers: authHeadersGet() })

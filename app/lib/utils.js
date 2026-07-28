@@ -131,29 +131,48 @@ export function formatMonthYear(ymStr) {
   return d.toLocaleDateString("es-MX", { month: "long", year: "numeric" });
 }
 
-// weeklyHasContent — true si en esa weekly ya se capturo algo real.
-// Se usa para distinguir una weekly "en curso" de una vacia recien creada.
-export function weeklyHasContent(w) {
+// weeklyStarted — una weekly SOLO se considera iniciada si alguien apreto el boton
+// de arrancar (deja `startedAt`) o si el cronometro llego a correr.
+//
+// A proposito NO se infiere de que haya contenido capturado: el efecto que hidrata
+// el presentador por defecto (Angel en Político-Electoral) escribe en `presenters`
+// sin intervencion del usuario, y con la heuristica de contenido eso hacia aparecer
+// la barra del timer sola, como si la weekly ya hubiera empezado.
+export function weeklyStarted(w) {
   if (!w) return false;
-  if ((w.elapsed || 0) > 0) return true;
-  if ((w.compromisos || []).some((c) => c.que?.trim())) return true;
-  // Solo cuentan presentadores de squads que siguen existiendo: quedan `presenters`
-  // de squads disueltos (ej. "pr") que por si solos harian ver como "en curso" una
-  // weekly que en realidad no tiene nada capturado.
-  if (SQUADS.some((s) => w.presenters?.[s.id]?.trim())) return true;
-  return SQUADS.some((s) =>
-    normalizeFocos(w.focos?.[s.id]).some((f) => f.focos?.trim() || f.blocker?.trim() || f.necesito?.trim())
-  );
+  return !!w.startedAt || (w.elapsed || 0) > 0;
 }
 
-// isWeeklyEnCurso — weekly empezada pero no cerrada.
-// Las weeklies viejas (anteriores al campo `status`) que ya tienen minutaText
-// guardada se consideran cerradas.
-export function isWeeklyEnCurso(w) {
+// weeklyClosed — cerrada explicitamente, o de las viejas (sin `status`) que ya
+// tienen su minuta guardada.
+export function weeklyClosed(w) {
   if (!w) return false;
-  if (w.status === "finished") return false;
-  if (!w.status && w.minutaText) return false;
-  return weeklyHasContent(w);
+  if (w.status === "finished") return weeklyStarted(w) || !!w.minutaText;
+  return !w.status && !!w.minutaText;
+}
+
+// isWeeklyEnCurso — weekly iniciada pero no cerrada.
+export function isWeeklyEnCurso(w) {
+  return weeklyStarted(w) && !weeklyClosed(w);
+}
+
+// migrateWeekly — normaliza weeklies guardadas con el shape viejo. Se aplica al
+// LEER (no con un script de una vez) porque una pestaña abierta con estado viejo en
+// memoria puede sobrescribir una migracion hecha directo en el store.
+//
+// Reorg jul-2026: el squad "pr" (PR Ceci) se disolvio y Efrain paso a Performance y
+// Conversión (id "inbound"), asi que sus focos se fusionan ahi. Sin esto quedaban
+// guardados pero invisibles, porque las vistas iteran SQUADS.
+export function migrateWeekly(w) {
+  if (!w || !w.focos?.pr) return w;
+  const pr = normalizeFocos(w.focos.pr);
+  if (!pr.length) {
+    const { pr: _drop, ...focos } = w.focos;
+    return { ...w, focos };
+  }
+  const { pr: _drop, ...rest } = w.focos;
+  const merged = [...normalizeFocos(rest.inbound), ...pr].sort((a, b) => (a.ts || 0) - (b.ts || 0));
+  return { ...w, focos: { ...rest, inbound: merged } };
 }
 
 // presenterFor — presentador efectivo de un bloque de squad: lo que se eligio en

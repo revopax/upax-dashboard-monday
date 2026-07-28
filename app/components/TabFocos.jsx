@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 // MONITOREO DE TAMANIO: Este archivo debe mantenerse por debajo de 400 lineas.
 // Si crece mas, extraer la seccion Cross-Squad a components/CrossSquadView.jsx.
 import { SQUADS, PHASES, TODAY } from '../lib/constants'
-import { parseTL, daysDiff, shortName, normalizeSquad, isActive, isOverdue, overlapsThisWeek, normalizeFocos } from '../lib/utils'
+import { parseTL, daysDiff, shortName, normalizeSquad, isActive, isOverdue, overlapsThisWeek, normalizeFocos, normalizePersonName } from '../lib/utils'
 import { C, TS, R, F } from '../lib/tokens'
 import { Chip, Card, RepeatableItems } from './ui'
 
@@ -43,7 +43,7 @@ const TabFocos = React.memo(function TabFocos({ items, wd, setWd, save, activeSq
   const buildEntries = (d) => {
     const out = [];
     const ts = Date.now();
-    (d.focosList || []).forEach((it) => { if (it.text?.trim()) out.push({ focos: it.text.trim(), ts }); });
+    (d.focosList || []).forEach((it) => { if (it.text?.trim()) out.push({ focos: it.text.trim(), focos_quien: it.quien || "", ts }); });
     (d.blockerList || []).forEach((it) => { if (it.text?.trim()) out.push({ blocker: it.text.trim(), blocker_quien: it.quien || "", blocker_cuando: it.cuando || "", ts }); });
     (d.necesitoList || []).forEach((it) => { if (it.text?.trim()) out.push({ necesito: it.text.trim(), necesito_quien: it.quien || "", necesito_cuando: it.cuando || "", ts }); });
     return out;
@@ -63,7 +63,7 @@ const TabFocos = React.memo(function TabFocos({ items, wd, setWd, save, activeSq
   const editEntry = (idx) => {
     const e = entries[idx];
     const d = { focosList: [], blockerList: [], necesitoList: [] };
-    if (e.focos?.trim()) d.focosList.push({ text: e.focos });
+    if (e.focos?.trim()) d.focosList.push({ text: e.focos, quien: e.focos_quien || "" });
     if (e.blocker?.trim()) d.blockerList.push({ text: e.blocker, quien: e.blocker_quien || "", cuando: e.blocker_cuando || "" });
     if (e.necesito?.trim()) d.necesitoList.push({ text: e.necesito, quien: e.necesito_quien || "", cuando: e.necesito_cuando || "" });
     setDraft(d); setEditIdx(idx); setShowForm(true);
@@ -126,7 +126,7 @@ const TabFocos = React.memo(function TabFocos({ items, wd, setWd, save, activeSq
             </div>
             {entries.map((entry, idx) => (
               <div key={idx} style={{ padding: "10px 12px", marginBottom: 6, borderRadius: 8, background: C.bg, border: "1px solid var(--bg4)" }}>
-                {entry.focos?.trim() && <div style={{ fontSize: 13, color: C.tx, marginBottom: 2 }}>🎯 {entry.focos}</div>}
+                {entry.focos?.trim() && <div style={{ fontSize: 13, color: C.tx, marginBottom: 2 }}>🎯 {entry.focos}{entry.focos_quien ? <span style={{ color: C.tx3 }}> → {shortName(entry.focos_quien)}</span> : ""}</div>}
                 {entry.blocker?.trim() && <div style={{ fontSize: 13, color: C.red, marginBottom: 2 }}>🚫 {entry.blocker}{entry.blocker_quien ? ` → ${shortName(entry.blocker_quien)}` : ""}{entry.blocker_cuando ? ` · ${new Date(entry.blocker_cuando + "T12:00:00").toLocaleDateString("es-MX", { day: "numeric", month: "short" })}` : ""}</div>}
                 {entry.necesito?.trim() && <div style={{ fontSize: 13, color: C.yellow, marginBottom: 2 }}>🤝 {entry.necesito}{entry.necesito_quien ? ` → ${shortName(entry.necesito_quien)}` : ""}{entry.necesito_cuando ? ` · ${new Date(entry.necesito_cuando + "T12:00:00").toLocaleDateString("es-MX", { day: "numeric", month: "short" })}` : ""}</div>}
                 <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
@@ -147,7 +147,7 @@ const TabFocos = React.memo(function TabFocos({ items, wd, setWd, save, activeSq
             )}
             {(showForm || editIdx !== null || entries.length === 0) && (
               <div style={{ padding: entries.length > 0 ? "10px 0 0" : 0, borderTop: entries.length > 0 ? "1px dashed var(--bg4)" : "none" }}>
-                <RepeatableItems icon="🎯" label="Focos" placeholder="Ej: Lanzamiento campaña Verano" items={draft.focosList} onChange={(items) => updateDraft("focosList", items)} />
+                <RepeatableItems icon="🎯" label="Focos" placeholder="Ej: Lanzamiento campaña Verano" items={draft.focosList} onChange={(items) => updateDraft("focosList", items)} withOwner squad={sq?.name} />
                 <RepeatableItems icon="🚫" label="Blocker" placeholder="Ej: Espero brief de UDN MS para finalizar landing" items={draft.blockerList} onChange={(items) => updateDraft("blockerList", items)} withMeta />
                 <RepeatableItems icon="🤝" label="Necesito" placeholder="Ej: Performance, ajustar trackers de campaña X" items={draft.necesitoList} onChange={(items) => updateDraft("necesitoList", items)} withMeta />
                 <div style={{ display: "flex", gap: 6, alignItems: "center", justifyContent: "flex-end" }}>
@@ -178,9 +178,14 @@ const TabFocos = React.memo(function TabFocos({ items, wd, setWd, save, activeSq
                     onClick={() => {
                       setDraft(prev => ({
                         ...prev,
+                        // El owner se precarga con el responsable del item en Monday.
                         // El { text: "" } final mantiene la invariante de RepeatableItems
                         // (siempre un campo vacio al final, ya no hay boton "+ agregar").
-                        focosList: [...(prev.focosList || []).filter(x => x.text?.trim()), { text: it.name }, { text: "" }]
+                        focosList: [
+                          ...(prev.focosList || []).filter(x => x.text?.trim()),
+                          { text: it.name, quien: normalizePersonName(it.column_values?.person) || "" },
+                          { text: "" },
+                        ]
                       }));
                       setShowForm(true);
                     }}

@@ -1,5 +1,5 @@
 'use client'
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 // components/TabAgenda.jsx
 import { AGENDA, SQUADS } from '../lib/constants'
 import { presenterFor } from '../lib/utils'
@@ -16,21 +16,16 @@ const TabAgenda = React.memo(function TabAgenda({ wd, setWd, save, currentIdx, b
   const missing = AGENDA.filter((b) => b.squad && !eff(b.id).trim());
   const setPr = (id, v) => { const n = { ...wd, presenters: { ...wd.presenters, [id]: v } }; setWd(n); save(n); };
 
-  // Persistir los defaults (Político-Electoral) para que viajen a la minuta.
-  // Depende de wd.date: al montar, wd puede seguir siendo emptyWeekly() porque la
-  // carga desde Upstash es async (ver Dashboard.jsx). Sin esa dependencia el write
-  // se perdía cuando llegaba el wd real.
-  useEffect(() => {
-    const updates = {};
-    for (const sq of SQUADS) {
-      if (sq.defaultPresenter && !wd.presenters?.[sq.id]?.trim()) updates[sq.id] = sq.defaultPresenter;
-    }
-    if (Object.keys(updates).length > 0) {
-      const n = { ...wd, presenters: { ...wd.presenters, ...updates } };
-      setWd(n); save(n);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [wd.date]);
+  // NO se persiste el defaultPresenter automaticamente.
+  //
+  // Antes un efecto lo escribia al montar el tab. Eso creaba un registro de weekly
+  // para un dia en el que nadie habia hecho nada, y hacia que la app se viera con una
+  // weekly ya iniciada sin que el usuario apretara el boton.
+  //
+  // No hace falta: `presenterFor()` resuelve el default en cada lectura para la UI, y
+  // la minuta ya cae al `lead` del squad cuando no hay presentador elegido (para
+  // Político-Electoral el lead es Angel Toledano, o sea el mismo valor). Se guarda
+  // solo cuando alguien elige explicitamente en el selector.
 
   return (
     <div className="fade">
@@ -58,8 +53,11 @@ const TabAgenda = React.memo(function TabAgenda({ wd, setWd, save, currentIdx, b
           </div>
         </div>
         <div style={{ display: "flex", gap: 6 }}>
+          {/* keepTab: avanza el bloque sin sacarte de la Agenda, para poder ir
+              asignando presentadores bloque por bloque. Para saltar a la pantalla
+              del bloque estan el click en la fila y el ⏭ de la barra del timer. */}
           {currentIdx < AGENDA.length - 1 && (
-            <button onClick={() => onJumpToBlock(currentIdx + 1)} style={{ background: C.green, color: "#fff", border: "none", borderRadius: R.sm, padding: "5px 14px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+            <button onClick={() => onJumpToBlock(currentIdx + 1, { keepTab: true })} style={{ background: C.green, color: "#fff", border: "none", borderRadius: R.sm, padding: "5px 14px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
               ✓ Siguiente →
             </button>
           )}
