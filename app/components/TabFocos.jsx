@@ -26,7 +26,18 @@ const TabFocos = React.memo(function TabFocos({ items, wd, setWd, save, activeSq
   // Subtareas primero, luego tareas (ver getSquadWorkItems). Memoizado porque el
   // recorrido pasa por todos los items y sus subitems, y este componente se
   // re-renderiza en cada tecla del formulario de focos.
-  const sqItems = useMemo(() => (sq ? getSquadWorkItems(items, sq.name) : []), [items, sq?.name]);
+  const allSqItems = useMemo(() => (sq ? getSquadWorkItems(items, sq.name) : []), [items, sq?.name]);
+
+  const [search, setSearch] = useState("");
+  // Sin acentos y en minúsculas: buscar "revision" debe encontrar "Revisión".
+  const norm = (s) => String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+  const sqItems = useMemo(() => {
+    const q = norm(search).trim();
+    if (!q) return allSqItems;
+    return allSqItems.filter((w) =>
+      norm(w.name).includes(q) || norm(w.parentName).includes(q) || norm(w.person).includes(q)
+    );
+  }, [allSqItems, search]);
   const nSubs = sqItems.filter((w) => w.kind === "sub").length;
   const entries = normalizeFocos(focos[activeSquad]);
   const [showForm, setShowForm] = useState(!entries.length); // mostrar form si no hay entries
@@ -36,7 +47,32 @@ const TabFocos = React.memo(function TabFocos({ items, wd, setWd, save, activeSq
   const [editIdx, setEditIdx] = useState(null);
   const [confirmDelIdx, setConfirmDelIdx] = useState(null);
 
-  useEffect(() => { setDraft({}); setSaved(false); setEditIdx(null); setConfirmDelIdx(null); setShowForm(false); }, [activeSquad]);
+  useEffect(() => { setDraft({}); setSaved(false); setEditIdx(null); setConfirmDelIdx(null); setShowForm(false); setSearch(""); }, [activeSquad]);
+
+  // Nombres que ya están capturados como foco, para marcar la fila y no duplicar.
+  // Cuentan tanto los guardados como los del borrador en curso.
+  const yaEnFocos = useMemo(() => {
+    const s = new Set();
+    entries.forEach((e) => { if (e.focos?.trim()) s.add(e.focos.trim()); });
+    (draft.focosList || []).forEach((f) => { if (f.text?.trim()) s.add(f.text.trim()); });
+    return s;
+  }, [entries, draft.focosList]);
+
+  const agregarAFocos = useCallback((it) => {
+    if (yaEnFocos.has(it.name.trim())) return; // ya está, no duplicar
+    setDraft((prev) => ({
+      ...prev,
+      // El owner se precarga con el responsable DE ESTE SQUAD, no con el primero
+      // del texto de Monday, que puede ser de otro equipo.
+      // El { text: "" } final mantiene la invariante de RepeatableItems.
+      focosList: [
+        ...(prev.focosList || []).filter((x) => x.text?.trim()),
+        { text: it.name, quien: it.owners?.[0] || normalizePersonName(it.person) || "" },
+        { text: "" },
+      ],
+    }));
+    setShowForm(true);
+  }, [yaEnFocos]);
 
   const updateDraft = useCallback((field, val) => setDraft((prev) => ({ ...prev, [field]: val })), []);
   const listHas = (l) => Array.isArray(l) && l.some((it) => it.text?.trim());
@@ -165,13 +201,28 @@ const TabFocos = React.memo(function TabFocos({ items, wd, setWd, save, activeSq
               </div>
             )}
           </Card>
-          <div style={{ fontSize: 11, fontWeight: 700, color: C.tx3, marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>
-            Items activos · {sqItems.length}
-            {sqItems.length > 0 && <span style={{ fontWeight: 500, letterSpacing: 0, textTransform: "none", marginLeft: 6 }}>({nSubs} subtareas · {sqItems.length - nSubs} tareas)</span>}
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, flexWrap: "wrap" }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: C.tx3, textTransform: "uppercase", letterSpacing: 1 }}>
+              Items activos · {sqItems.length}
+              {sqItems.length > 0 && <span style={{ fontWeight: 500, letterSpacing: 0, textTransform: "none", marginLeft: 6 }}>({nSubs} subtareas · {sqItems.length - nSubs} tareas)</span>}
+              {search && allSqItems.length !== sqItems.length && <span style={{ fontWeight: 500, letterSpacing: 0, textTransform: "none", marginLeft: 6 }}>de {allSqItems.length}</span>}
+            </div>
+            <div style={{ position: "relative", marginLeft: "auto" }}>
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Buscar item, proyecto o persona..."
+                style={{ background: C.bg, border: "1px solid var(--bg4)", borderRadius: 8, padding: "5px 26px 5px 10px", fontSize: 12, fontFamily: F.sans, color: C.tx, outline: "none", width: 220, boxSizing: "border-box" }}
+                onFocus={(e) => { e.target.style.borderColor = C.blue; }}
+                onBlur={(e) => { e.target.style.borderColor = C.bg4; }}
+              />
+              {search && <button type="button" onClick={() => setSearch("")} aria-label="Limpiar búsqueda" style={{ position: "absolute", right: 6, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: C.tx3, cursor: "pointer", fontSize: 12, lineHeight: 1, padding: 0 }}>✕</button>}
+            </div>
           </div>
           <div style={{ maxHeight: 340, overflowY: "auto" }}>
             {sqItems.map((it, idx) => {
               const isSub = it.kind === "sub";
+              const enFocos = yaEnFocos.has(it.name.trim());
               // Encabezado al empezar cada bloque, solo si hay de los dos tipos.
               const showHeader = nSubs > 0 && nSubs < sqItems.length && (idx === 0 || idx === nSubs);
               const tl = parseTL(it.timeline), od = isOverdueWork(it), tw = overlapsThisWeek(it.timeline);
@@ -182,7 +233,13 @@ const TabFocos = React.memo(function TabFocos({ items, wd, setWd, save, activeSq
                     {isSub ? "Subtareas" : "Tareas"}
                   </div>
                 )}
-                <div style={{ display: "flex", gap: 5, alignItems: "center", padding: "5px 8px", paddingLeft: isSub ? 20 : 8, borderBottom: "1px solid var(--bg3)", fontSize: 12, background: od ? "rgba(255,59,48,.06)" : tw ? "rgba(0,122,255,.04)" : "transparent", borderLeft: tw ? "3px solid var(--blue)" : od ? "3px solid var(--red)" : "3px solid transparent" }}>
+                <div
+                  onClick={() => agregarAFocos(it)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); agregarAFocos(it); } }}
+                  title={enFocos ? "Ya está en focos" : "Click para agregar a focos"}
+                  style={{ display: "flex", gap: 5, alignItems: "center", padding: "5px 8px", paddingLeft: isSub ? 20 : 8, borderBottom: "1px solid var(--bg3)", fontSize: 12, cursor: enFocos ? "default" : "pointer", opacity: enFocos ? 0.55 : 1, background: enFocos ? "rgba(48,209,88,.06)" : od ? "rgba(255,59,48,.06)" : tw ? "rgba(0,122,255,.04)" : "transparent", borderLeft: enFocos ? "3px solid var(--green)" : tw ? "3px solid var(--blue)" : od ? "3px solid var(--red)" : "3px solid transparent" }}>
                   {/* Subtarea: sangría + glifo. Tarea: el punto de fase de siempre. */}
                   {isSub
                     ? <span style={{ color: C.tx3, fontSize: 10, flexShrink: 0, lineHeight: 1 }} title="Subtarea">↳</span>
@@ -193,29 +250,17 @@ const TabFocos = React.memo(function TabFocos({ items, wd, setWd, save, activeSq
                   </span>
                   {!isSub && it.subsTotal > 0 && <div style={{ display: "flex", alignItems: "center", gap: 3, flexShrink: 0 }}><div style={{ width: 32, height: 4, borderRadius: 2, background: C.bg4, overflow: "hidden" }}><div style={{ width: `${(it.subsDone / it.subsTotal) * 100}%`, height: "100%", background: it.subsDone === it.subsTotal ? C.green : C.blue, borderRadius: 2 }} /></div><span style={{ fontFamily: F.mono, fontSize: 9, color: C.tx3 }}>{it.subsDone}/{it.subsTotal}</span></div>}
                   {od && <span style={{ fontFamily: F.mono, color: C.red, fontWeight: 700, fontSize: 10 }}>-{tl.end ? daysDiff(TODAY, tl.end) : "?"}d</span>}
-                  <span style={{ color: C.tx3, fontSize: 10 }}>{shortName(it.person)}</span>
+                  {/* Se muestra el responsable DE ESTE SQUAD. Con varios dueños,
+                      pintar el primero del texto de Monday hacía parecer que la
+                      lista estaba mal filtrada. El +N son los de otros equipos. */}
+                  <span style={{ color: C.tx3, fontSize: 10, flexShrink: 0, whiteSpace: "nowrap" }} title={it.person || ""}>
+                    {shortName(it.owners?.[0] || it.person)}
+                    {it.otherOwners > 0 && <span style={{ opacity: 0.7 }}> +{it.otherOwners}</span>}
+                  </span>
                   {tl.end && <span style={{ fontFamily: F.mono, color: od ? C.red : C.tx3, fontWeight: od ? 700 : 400, fontSize: 10 }}>{tl.end.toLocaleDateString("es-MX", { day: "2-digit", month: "short" })}</span>}
-                  <button
-                    onClick={() => {
-                      setDraft(prev => ({
-                        ...prev,
-                        // El owner se precarga con el responsable del item en Monday.
-                        // El { text: "" } final mantiene la invariante de RepeatableItems
-                        // (siempre un campo vacio al final, ya no hay boton "+ agregar").
-                        focosList: [
-                          ...(prev.focosList || []).filter(x => x.text?.trim()),
-                          { text: it.name, quien: normalizePersonName(it.person) || "" },
-                          { text: "" },
-                        ]
-                      }));
-                      setShowForm(true);
-                    }}
-                    style={{ background: C.bg3, color: C.blue, border: "none",
-                      borderRadius: R.xs, padding: "2px 6px", fontSize: 9,
-                      fontWeight: 600, cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap" }}
-                  >
-                    → Foco
-                  </button>
+                  <span style={{ color: enFocos ? C.green : C.blue, fontSize: 9, fontWeight: 600, flexShrink: 0, whiteSpace: "nowrap", minWidth: 52, textAlign: "right" }}>
+                    {enFocos ? "✓ En focos" : "→ Foco"}
+                  </span>
                 </div>
                 </React.Fragment>
               );

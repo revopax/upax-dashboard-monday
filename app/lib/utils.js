@@ -91,20 +91,27 @@ export function isOverdueWork(w) {
   return tl.end ? tl.end < TODAY : false;
 }
 
-// ownerSquads — squads de los responsables de un item. La columna `person` de
-// Monday puede traer varias personas separadas por coma, así que se parte y se
-// normaliza cada nombre por separado (normalizePersonName tolera variantes de
-// acentuación y nombres parciales).
-export function ownerSquads(personText) {
-  if (!personText) return [];
-  const squads = new Set();
-  for (const raw of String(personText).split(/[,;]/)) {
+// splitOwners — separa los responsables de un item entre los de ESTE squad y los
+// del resto. La columna `person` de Monday puede traer varias personas separadas
+// por coma; se parte y se normaliza cada nombre (normalizePersonName tolera
+// variantes de acentuación y nombres parciales).
+//
+// `recognized` cuenta solo a los que existen en PERSONAS: un nombre desconocido no
+// debe impedir el respaldo a la etiqueta de squad del item.
+//
+// Existe además para la UI: mostrar el primer nombre del texto a secas hacía
+// parecer que la lista estaba mal filtrada (una subtarea de "Iris, César" salía en
+// RevOps mostrando a Iris, que es de otro squad).
+export function splitOwners(personText, squadName) {
+  const mine = [], others = [];
+  for (const raw of String(personText || '').split(/[,;]/)) {
     const name = raw.trim();
     if (!name) continue;
     const persona = PERSONAS.find((p) => p.name === normalizePersonName(name));
-    if (persona) squads.add(persona.squad);
+    if (!persona) continue;
+    (persona.squad === squadName ? mine : others).push(persona.name);
   }
-  return [...squads];
+  return { mine, others, recognized: mine.length + others.length };
 }
 
 // belongsToSquad — ¿este trabajo es de este squad?
@@ -119,10 +126,10 @@ export function ownerSquads(personText) {
 // Sin responsable reconocible se cae a la etiqueta del item, para no hacer
 // desaparecer trabajo sin asignar. Las subtareas usan la etiqueta de su tarea
 // padre, porque en Monday no tienen columna de squad propia.
-function belongsToSquad(personText, fallbackLabel, squadName) {
-  const squads = ownerSquads(personText);
-  if (squads.length) return squads.includes(squadName);
-  return normalizeSquad(fallbackLabel) === squadName;
+function ownershipFor(personText, fallbackLabel, squadName) {
+  const { mine, others, recognized } = splitOwners(personText, squadName);
+  const belongs = recognized ? mine.length > 0 : normalizeSquad(fallbackLabel) === squadName;
+  return { belongs, owners: mine, otherOwners: others.length };
 }
 
 // getSquadWorkItems — trabajo activo de un squad: subtareas primero, luego tareas.
@@ -141,23 +148,29 @@ export function getSquadWorkItems(items, squadName) {
       const scv = s.column_values || {};
       const phase = scv[WORK_COLS.sub.phase];
       if (!isActive(phase)) continue;
-      if (!belongsToSquad(scv.person, label, squadName)) continue;
+      const own = ownershipFor(scv.person, label, squadName);
+      if (!own.belongs) continue;
       subs.push({
         id: `sub-${s.id}`, name: s.name, kind: "sub", phase,
         timeline: scv[WORK_COLS.sub.timeline] || null,
+        // `person` es el texto crudo de Monday; `owners` son los de ESTE squad,
+        // que es lo que debe verse en la fila.
         person: scv.person || null,
+        owners: own.owners, otherOwners: own.otherOwners,
         parentName: it.name,
       });
     }
 
     const phase = cv[WORK_COLS.task.phase];
     if (!isActive(phase)) continue;
-    if (!belongsToSquad(cv.person, label, squadName)) continue;
+    const own = ownershipFor(cv.person, label, squadName);
+    if (!own.belongs) continue;
     const allSubs = it.subitems || [];
     tasks.push({
       id: `task-${it.id}`, name: it.name, kind: "task", phase,
       timeline: cv[WORK_COLS.task.timeline] || null,
       person: cv.person || null,
+      owners: own.owners, otherOwners: own.otherOwners,
       subsTotal: allSubs.length,
       subsDone: allSubs.filter((s) => s.column_values?.[WORK_COLS.sub.phase] === "✅ Done").length,
     });

@@ -172,7 +172,7 @@ export function PersonSelect({ value, onChange, style = {}, squad }) {
                 <div key={p.name} role="option" aria-selected={p.name === value} data-idx={idx} onClick={() => select(p.name)} style={{ padding: "6px 10px", fontSize: 12, cursor: "pointer", background: isActive ? C.bg3 : p.name === value ? "rgba(0,122,255,.08)" : "transparent", color: p.name === value ? C.blue : C.tx, fontWeight: p.name === value ? 600 : 400, outline: isActive ? "2px solid var(--blue)" : "none", outlineOffset: -2 }}
                   onMouseEnter={e => { e.currentTarget.style.background = C.bg3; setActiveIdx(idx); }}
                   onMouseLeave={e => e.currentTarget.style.background = p.name === value ? "rgba(0,122,255,.08)" : "transparent"}>
-                  {p.name}{p.star ? " ★" : ""}
+                  {p.name}
                 </div>
                 );
               })}

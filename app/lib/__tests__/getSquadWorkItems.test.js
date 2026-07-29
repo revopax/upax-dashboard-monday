@@ -89,6 +89,35 @@ describe('getSquadWorkItems', () => {
     expect(getSquadWorkItems(items, 'Portafolio y Ecosistema')).toHaveLength(1)
   })
 
+  // Caso real: una subtarea de 'Iris Múgica, César Mejía Medina' salía en RevOps
+  // mostrando "Iris Múgica," — el primer nombre del texto, que es de otro squad.
+  // Parecía que el filtro estaba mal cuando en realidad era la etiqueta mostrada.
+  it('expone el responsable DE ESTE squad, no el primero del texto', () => {
+    const items = [task('1', 'Compartido', '🚧 Sprint', { person: 'Iris Múgica, César Mejía Medina' })]
+
+    const revops = getSquadWorkItems(items, 'RevOps & Analytics')[0]
+    expect(revops.owners).toEqual(['César Mejía'])
+    expect(revops.otherOwners).toBe(1)
+
+    const web = getSquadWorkItems(items, 'Web y contenidos')[0]
+    expect(web.owners).toEqual(['Iris Múgica'])
+    expect(web.otherOwners).toBe(1)
+  })
+
+  it('con un solo responsable no reporta otros', () => {
+    const items = [task('1', 'Propio', '🚧 Sprint', { person: 'César Mejía' })]
+    const w = getSquadWorkItems(items, 'RevOps & Analytics')[0]
+    expect(w.owners).toEqual(['César Mejía'])
+    expect(w.otherOwners).toBe(0)
+  })
+
+  it('los nombres desconocidos no cuentan como otros responsables', () => {
+    const items = [task('1', 'Mixto', '🚧 Sprint', { person: 'César Mejía, Alguien Externo' })]
+    const w = getSquadWorkItems(items, 'RevOps & Analytics')[0]
+    expect(w.owners).toEqual(['César Mejía'])
+    expect(w.otherOwners).toBe(0)
+  })
+
   it('tolera variantes de escritura del nombre en Monday', () => {
     const items = [task('1', 'Con acento raro', '🚧 Sprint', { person: 'Cesar Mejia' })]
     expect(getSquadWorkItems(items, 'RevOps & Analytics')).toHaveLength(1)
