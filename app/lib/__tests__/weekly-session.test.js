@@ -1,5 +1,37 @@
 import { describe, it, expect } from 'vitest'
-import { weeklyStarted, weeklyClosed, isWeeklyEnCurso, migrateWeekly, formatLongDate } from '../utils'
+import { weeklyStarted, weeklyClosed, isWeeklyEnCurso, migrateWeekly, formatLongDate, weeklyHasContent } from '../utils'
+
+describe('weeklyHasContent', () => {
+  // Regresión: abrir la app escribía un weekly:<hoy> vacío en Upstash, que luego
+  // salía listado como una minuta "HOY" inexistente. 36 de 64 registros del store
+  // eran basura por esto. Este predicado es el guard del autosave.
+  it('es false para una weekly recién creada', () => {
+    expect(weeklyHasContent({ date: '2026-07-29', focos: {}, presenters: {}, compromisos: [] })).toBe(false)
+    expect(weeklyHasContent({})).toBe(false)
+    expect(weeklyHasContent(null)).toBe(false)
+  })
+
+  it('no cuenta focos vacíos ni compromisos en blanco', () => {
+    expect(weeklyHasContent({ focos: { inbound: [{ focos: '  ' }] }, compromisos: [{ que: '' }] })).toBe(false)
+  })
+
+  it('es true en cuanto hay algo capturado', () => {
+    expect(weeklyHasContent({ focos: { inbound: [{ focos: 'lanzamiento' }] } })).toBe(true)
+    expect(weeklyHasContent({ compromisos: [{ que: 'mandar brief' }] })).toBe(true)
+    expect(weeklyHasContent({ presenters: { revops: 'César Mejía' } })).toBe(true)
+    expect(weeklyHasContent({ minutaText: 'WEEKLY MKT CORP...' })).toBe(true)
+  })
+
+  it('ignora presenters de squads disueltos', () => {
+    expect(weeklyHasContent({ presenters: { pr: 'Efraín Maciel' } })).toBe(false)
+  })
+
+  it('tener contenido no implica estar iniciada', () => {
+    const w = { focos: { inbound: [{ focos: 'algo' }] } }
+    expect(weeklyHasContent(w)).toBe(true)
+    expect(weeklyStarted(w)).toBe(false)
+  })
+})
 
 describe('weeklyStarted', () => {
   it('es false para una weekly recien creada', () => {

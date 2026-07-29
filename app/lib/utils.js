@@ -131,6 +131,22 @@ export function formatMonthYear(ymStr) {
   return d.toLocaleDateString("es-MX", { month: "long", year: "numeric" });
 }
 
+// weeklyHasContent — ¿hay algo capturado que valga la pena persistir?
+//
+// OJO: esto NO decide si la weekly esta iniciada — para eso esta weeklyStarted().
+// Su unico uso es evitar que abrir la app escriba en Upstash un registro vacio.
+// Contar `presenters` aqui es seguro porque ya no se hidrata ningun presentador
+// por defecto de forma automatica; solo se guarda lo que alguien elige a mano.
+export function weeklyHasContent(w) {
+  if (!w) return false;
+  if (w.minutaText?.trim()) return true;
+  if ((w.compromisos || []).some((c) => c.que?.trim())) return true;
+  if (SQUADS.some((s) => w.presenters?.[s.id]?.trim())) return true;
+  return SQUADS.some((s) =>
+    normalizeFocos(w.focos?.[s.id]).some((f) => f.focos?.trim() || f.blocker?.trim() || f.necesito?.trim())
+  );
+}
+
 // weeklyStarted — una weekly SOLO se considera iniciada si alguien apreto el boton
 // de arrancar (deja `startedAt`) o si el cronometro llego a correr.
 //

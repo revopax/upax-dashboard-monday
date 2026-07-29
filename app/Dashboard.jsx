@@ -11,7 +11,7 @@ import {
   normalizeSquad, normalizePersonName, isTeamMember,
   parseTL, addDays, getMondayStr, isOverdue, isActive,
   WEEK, PREV_WEEK,
-  overlapsThisWeek, copyToClipboard, weeklyClosed, isWeeklyEnCurso, migrateWeekly,
+  overlapsThisWeek, copyToClipboard, weeklyClosed, weeklyHasContent, isWeeklyEnCurso, migrateWeekly,
 } from "./lib/utils";
 import { storeGet, storeSet, storeDel, storeWeeklies } from "./lib/storage";
 import { fetchAllItems, sendToSlack, authHeaders } from "./lib/api";
@@ -169,6 +169,13 @@ export default function App() {
   useEffect(() => {
     if (!loadedRef.current) return;
     if (!wd || !wd.date) return;
+    // No crear un registro solo por abrir la app. Antes, entrar al dashboard
+    // bastaba para escribir un `weekly:<hoy>` vacio en Upstash, que despues salia
+    // listado como una minuta "HOY" inexistente. Se guarda cuando hay algo que
+    // guardar: contenido capturado, cronometro corriendo o weekly cerrada.
+    const worthSaving = finishedRef.current || !!startedAtRef.current
+      || elapsedRef.current > 0 || weeklyHasContent(wd);
+    if (!worthSaving) return;
     clearTimeout(autoSaveRef.current);
     autoSaveRef.current = setTimeout(() => {
       storeSet(STORE_KEY, withSession({ ...wd, gdd_snapshot: appGddData })).catch(() => {});

@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react'
 // components/TabMinutas.jsx — Lista de minutas (TabMinutasInline), agrupada por mes.
 import { STORE_KEY, TODAY_STR } from '../lib/constants'
 import { copyToClipboard, formatLongDate, formatMonthYear, migrateWeekly } from '../lib/utils'
-import { storeGet, storeDel, storeList } from '../lib/storage'
+import { storeGet, storeDel, storeWeeklies } from '../lib/storage'
 import { generateMinuta } from '../lib/minuta'
 import { C, R, F } from '../lib/tokens'
 import { Alerta } from './ui'
@@ -21,14 +21,16 @@ const TabMinutasInline = React.memo(function TabMinutasInline({ wd, analysis, gd
   const isOpen = (ym) => (ym in collapsed ? !collapsed[ym] : ym === CURRENT_YM);
   const toggle = (ym) => setCollapsed((p) => ({ ...p, [ym]: isOpen(ym) }));
 
+  // Aqui solo van weeklies que YA tienen minuta guardada, es decir las que se
+  // cerraron. Antes se listaba toda clave `weekly:*` y ademas se inyectaba a la
+  // fuerza la de hoy, asi que siempre aparecia una minuta "HOY" que no existia.
+  //
+  // storeWeeklies() trae la proyeccion ligera de todas en UNA request (incluye
+  // `minutaText` como booleano) y ya descarta los backups `:before_reset`.
   useEffect(() => {
     (async () => {
-      const allKeys = await storeList("weekly:");
-      // Excluye los backups `weekly:<fecha>:before_reset` que crea el reset de sesion:
-      // no son minutas y su fecha no parsea, salian como "Fecha no disponible".
-      const onlyWeeklies = allKeys.filter((k) => /^weekly:\d{4}-\d{2}-\d{2}$/.test(k));
-      const merged = [...new Set([STORE_KEY, ...onlyWeeklies])].sort().reverse();
-      setKeys(merged);
+      const all = await storeWeeklies();
+      setKeys(all.filter((w) => w.minutaText).map((w) => w.key).sort().reverse());
       setLoading(false);
     })();
   }, []);
