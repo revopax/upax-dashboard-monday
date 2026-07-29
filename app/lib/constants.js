@@ -62,16 +62,18 @@ export const SQUAD_ALIASES = {
   "Squad 3": "Web y contenidos",
   "PR Ceci": "Performance y Conversión",         // squad disuelto → Efrain se fue aqui
   //
-  // ⚠️ ACCION REQUERIDA EN EL BOARD DE MONDAY (columna color_mkz0s203)
-  // La etiqueta "Performance y Conversión" del board todavia significa el squad de
-  // Iris, que ahora se llama "Web y contenidos". Esto NO se puede resolver con un
-  // alias: "Performance y Conversión" es tambien el nombre NUEVO del ex-Inbound, y
-  // aliasarlo romperia ese squad (normalizeSquad dejaria de ser idempotente).
-  // Hay que renombrar las dos etiquetas en Monday, en este orden:
-  //     "Performance y Conversión" → "Web y contenidos"
-  //     "Inbound Studio"           → "Performance y Conversión"
-  // Monday propaga el rename a los items existentes, asi que el historico queda bien.
-  // Mientras no se haga, los items de Iris caen en el squad de Fernando.
+  // ── NO proponer renombrar las etiquetas del board ───────────────────────────
+  // Se evaluo y se descarto: renombrar la columna color_mkz0s203 en Monday rompe
+  // el historico del board. Por eso la atribucion de squad NO depende de estas
+  // etiquetas, sino del RESPONSABLE del item (ver squadOfTask/squadOfSubtask en
+  // utils.js). Estos alias quedan solo como respaldo para items sin responsable
+  // reconocible: ~45 de 692 tareas.
+  //
+  // Ojo con la trampa historica: la etiqueta "Performance y Conversión" del board
+  // significa el squad de Iris (hoy "Web y contenidos"), pero es tambien el nombre
+  // canonico NUEVO del ex-Inbound. Por eso NO se aliasea: hacerlo romperia el squad
+  // nuevo y normalizeSquad dejaria de ser idempotente. Con la atribucion por
+  // responsable esa ambiguedad casi nunca se ejerce.
 };
 
 export const PHASES = {
