@@ -1,15 +1,16 @@
 import { NextResponse } from 'next/server'
 import { upstashGet, upstashSet } from '../../lib/upstash-server'
-import { computeMetricsForWindow } from '../gdd-hubspot/helpers'
+import { computeMetricsForWindow } from '../gdd-metrics/helpers'
+import { supabaseConfigured } from '../../lib/supabase-server'
 
 export const dynamic = 'force-dynamic'
 
 const GDD_HISTORY_KEY = 'gdd_history'
 
 // Recalcula el historial semanal con la definición SOLO-MKT actual:
-// - leads/mqls/sqls/opps + pipeline se recomputan desde HubSpot por semana
+// - leads/mqls/sqls/opps + pipeline se recomputan desde Supabase por semana
 //   (via computeMetricsForWindow, que aplica los filtros MKT de METRIC_DEFS).
-// - por_origen / breakdown_macro se refrescan desde /api/hubspot-mqls (también MKT).
+// - por_origen / breakdown_macro se refrescan desde /api/mql-breakdown (también MKT).
 // Protegido con CRON_SECRET o API_SECRET.
 export async function GET(request) {
   const auth = request.headers.get('authorization')
@@ -20,9 +21,8 @@ export async function GET(request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const hsToken = process.env.HUBSPOT_PRIVATE_APP_TOKEN
-  if (!hsToken) {
-    return NextResponse.json({ error: 'HUBSPOT_PRIVATE_APP_TOKEN no configurado' }, { status: 503 })
+  if (!supabaseConfigured()) {
+    return NextResponse.json({ error: 'SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY no configurados' }, { status: 503 })
   }
 
   const internalAuth = apiSecret ? { 'Authorization': `Bearer ${apiSecret}` } : {}
@@ -45,7 +45,9 @@ export async function GET(request) {
       //    de campo lo resuelve buildDateFilters dentro del helper).
       let metrics = {}
       try {
-        metrics = await computeMetricsForWindow(hsToken, sd, sh)
+        const res = await computeMetricsForWindow(sd, sh)
+        metrics = res.metrics
+        res.errors.forEach((e) => errors.push(`metrics ${sd}: ${e}`))
       } catch (e) {
         errors.push(`metrics ${sd}: ${e.message}`)
       }
@@ -56,7 +58,7 @@ export async function GET(request) {
       try {
         const mqlRes = await fetch(
           // nocache=1 → recalcular fresco; evita guardar por_origen stale del caché.
-          new URL(`/api/hubspot-mqls?semana_desde=${sd}&semana_hasta=${sh}&nocache=1`, request.url).toString(),
+          new URL(`/api/mql-breakdown?semana_desde=${sd}&semana_hasta=${sh}&nocache=1`, request.url).toString(),
           { cache: 'no-store', headers: internalAuth }
         )
         if (mqlRes.ok) {
@@ -80,8 +82,9 @@ export async function GET(request) {
       })
       updated++
 
-      // Rate limit entre semanas para no saturar la API de HubSpot
-      await new Promise(r => setTimeout(r, 600))
+      // Pausa corta entre semanas. Ya no hace falta cuidar el rate limit de
+      // HubSpot, pero se conserva para no encimar consultas sobre la misma tabla.
+      await new Promise(r => setTimeout(r, 150))
     }
 
     const sorted = enriched.sort((a, b) => (b.id || b.semana_desde).localeCompare(a.id || a.semana_desde))

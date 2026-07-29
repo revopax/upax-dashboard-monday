@@ -94,6 +94,19 @@ const TabHome = React.memo(function TabHome({ analysis: an, items, elapsed, onSt
         </div>
       )}
 
+      {/* Aviso de frescura. La tabla `mbr` de Supabase la reescribe sync.py cada 2h,
+          pero el sync la trata como best-effort: si falla, sigue de largo y los
+          datos se quedan viejos sin avisar. synced_at es lo que lo delata. */}
+      {gddData?.stale && (
+        <div style={{ background: "rgba(255,214,10,.08)", border: "1px solid rgba(255,214,10,.3)", borderRadius: R.sm, padding: "8px 12px", marginBottom: 10, display: "flex", alignItems: "center", gap: 8, fontSize: 12 }}>
+          <span>⚠️</span>
+          <span style={{ color: C.yellow, fontWeight: 600 }}>Datos de GdD desactualizados</span>
+          <span style={{ color: C.tx3 }}>
+            última sincronización hace {gddData.age_hours}h · el sync corre cada 2h, revisa que no haya fallado
+          </span>
+        </div>
+      )}
+
       {/* GdD KPIs — sub-componente extraido */}
       <GddKpiSection gddData={gddData} gddTargets={gddTargets} gddLoading={gddLoading} />
 

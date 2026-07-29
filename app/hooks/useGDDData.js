@@ -68,8 +68,8 @@ const GDD_EMPTY = {
  * useGDDData — Hook unificado para datos de Generacion de Demanda
  *
  * Fuentes autoritativas:
- * - HubSpot (via /api/gdd-hubspot): Leads, MQLs, SQLs, OPPs con split mkt/com
- * - HubSpot (via /api/hubspot-mqls): Desglose de MQLs por origen/canal
+ * - HubSpot (via /api/gdd-metrics): Leads, MQLs, SQLs, OPPs con split mkt/com
+ * - HubSpot (via /api/mql-breakdown): Desglose de MQLs por origen/canal
  * - Upstash (via /api/storage): Historial semanal
  *
  * SIDE-EFFECT IMPORTANTE: Este hook AUTO-GUARDA en gdd_history (Upstash) cuando:
@@ -96,7 +96,7 @@ export function useGDDData() {
       // 1. Fetch HubSpot — fuente autoritativa para Leads, MQLs, SQLs, OPPs
       let hubspotData = null
       try {
-        const res = await fetchWithTimeout('/api/gdd-hubspot', { headers: authHeadersGet() }, 15000)
+        const res = await fetchWithTimeout('/api/gdd-metrics', { headers: authHeadersGet() }, 15000)
         if (res.ok) {
           const data = await res.json()
           if (!data.error) hubspotData = data
@@ -118,11 +118,11 @@ export function useGDDData() {
       // Fetch current and prev week MQL breakdowns in parallel
       const [mqlCurrent, mqlPrev] = await Promise.allSettled([
         fetchWithTimeout(
-          `/api/hubspot-mqls?semana_desde=${encodeURIComponent(weekDates.semana_desde)}&semana_hasta=${encodeURIComponent(weekDates.semana_hasta)}`,
+          `/api/mql-breakdown?semana_desde=${encodeURIComponent(weekDates.semana_desde)}&semana_hasta=${encodeURIComponent(weekDates.semana_hasta)}`,
           { headers: authHeadersGet() }, 10000
         ).then(r => r.ok ? r.json() : null).then(d => d && !d.error ? d : null),
         fetchWithTimeout(
-          `/api/hubspot-mqls?semana_desde=${encodeURIComponent(prevDates.semana_desde)}&semana_hasta=${encodeURIComponent(prevDates.semana_hasta)}`,
+          `/api/mql-breakdown?semana_desde=${encodeURIComponent(prevDates.semana_desde)}&semana_hasta=${encodeURIComponent(prevDates.semana_hasta)}`,
           { headers: authHeadersGet() }, 10000
         ).then(r => r.ok ? r.json() : null).then(d => d && !d.error ? d : null),
       ])

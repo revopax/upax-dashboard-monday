@@ -68,7 +68,7 @@ export const MqlChannelSection = React.memo(function MqlChannelSection({ mqlBrea
     const authHeaders = process.env.NEXT_PUBLIC_API_SECRET
       ? { 'Authorization': `Bearer ${process.env.NEXT_PUBLIC_API_SECRET}` } : {}
 
-    fetch(`/api/hubspot-mqls?semana_desde=${encodeURIComponent(sd)}&semana_hasta=${encodeURIComponent(sh)}`, {
+    fetch(`/api/mql-breakdown?semana_desde=${encodeURIComponent(sd)}&semana_hasta=${encodeURIComponent(sh)}`, {
       headers: authHeaders, cache: 'no-store',
     })
       .then(r => r.ok ? r.json() : null)

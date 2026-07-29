@@ -19,7 +19,7 @@ export async function GET(request) {
   try {
     // 1. Obtener datos GDD actuales
     const internalAuth = process.env.API_SECRET ? { 'Authorization': `Bearer ${process.env.API_SECRET}` } : {}
-    const gddRes = await fetch(new URL('/api/gdd-hubspot', request.url).toString(), {
+    const gddRes = await fetch(new URL('/api/gdd-metrics', request.url).toString(), {
       cache: 'no-store',
       headers: internalAuth,
     })
@@ -58,7 +58,7 @@ export async function GET(request) {
     let breakdown_macro = { inbound: 0, outbound: 0, unknown: 0 }
     try {
       const mqlRes = await fetch(
-        new URL(`/api/hubspot-mqls?semana_desde=${semana_desde}&semana_hasta=${semana_hasta}`, request.url).toString(),
+        new URL(`/api/mql-breakdown?semana_desde=${semana_desde}&semana_hasta=${semana_hasta}`, request.url).toString(),
         { cache: 'no-store', headers: internalAuth }
       )
       if (mqlRes.ok) {
