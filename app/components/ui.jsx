@@ -99,7 +99,10 @@ export function PersonSelect({ value, onChange, style = {}, squad }) {
   const ref = useRef(null);
   const listRef = useRef(null);
   // Si se pasa `squad`, el selector solo muestra personas de ese squad.
-  const pool = squad ? PERSONAS.filter((p) => p.squad === squad) : PERSONAS;
+  // Los `inactive` nunca se ofrecen: existen solo para atribuir trabajo viejo de
+  // gente que salió del área, o de externos que no son del equipo de Mkt Corp.
+  const activas = PERSONAS.filter((p) => !p.inactive);
+  const pool = squad ? activas.filter((p) => p.squad === squad) : activas;
   const groups = [...new Set(pool.map((p) => p.squad))];
   const lf = filter.toLowerCase();
   const filtered = lf ? pool.filter(p => p.name.toLowerCase().includes(lf) || p.squad.toLowerCase().includes(lf)) : pool;

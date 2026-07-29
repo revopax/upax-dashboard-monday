@@ -1,7 +1,7 @@
 'use client'
 import React, { useState, useRef, useEffect, useMemo } from 'react'
 import { SQUADS, TODAY_STR } from '../lib/constants'
-import { getRoadmapInRange, parseTL, shortName, normalizeSquad } from '../lib/utils'
+import { getRoadmapInRange, parseTL, shortName, normalizeSquad, squadOfTask } from '../lib/utils'
 import { C, F } from '../lib/tokens'
 import { Card } from './ui'
 
@@ -294,7 +294,7 @@ export const RoadmapTimeline = React.memo(function RoadmapTimeline({ items }) {
     const out = []
     const seen = new Set()
     for (const it of roadmapItems) {
-      const sqName = normalizeSquad(it.column_values?.color_mkz0s203 || '')
+      const sqName = squadOfTask(it)
       if (!seen.has(sqName)) {
         seen.add(sqName)
         const sqDef = SQUADS.find(s => s.name === sqName) || { id: sqName, name: sqName, color: C.tx3 }

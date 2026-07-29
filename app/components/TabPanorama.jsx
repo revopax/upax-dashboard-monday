@@ -2,9 +2,19 @@
 import React, { useState, useEffect } from 'react'
 // components/TabPanorama.jsx — Squads breakdown + Alertas completas
 import { SQUADS, TODAY } from '../lib/constants'
-import { parseTL, daysDiff, shortName, normalizeSquad } from '../lib/utils'
+import { parseTL, daysDiff, shortName, normalizeSquad, squadOfTask } from '../lib/utils'
 import { C, TS, F } from '../lib/tokens'
 import { Bar, Card, Chip } from './ui'
+
+// Segmentos de la barra de fases. Compartido por tareas y subtareas: las dos usan
+// el mismo vocabulario de fases, solo cambia la columna de la que salen.
+const PHASE_SEGS = (p = {}) => [
+  { l: "Spr", v: p["🚧 Sprint"] || 0, c: C.yellow, ph: "🚧 Sprint" },
+  { l: "Rev", v: p["👀 Review"] || 0, c: C.cyan, ph: "👀 Review" },
+  { l: "Mod", v: p["⚙️ Modificación"] || 0, c: C.purple, ph: "⚙️ Modificación" },
+  { l: "Det", v: p["🚫 Detenido"] || 0, c: C.red, ph: "🚫 Detenido" },
+  { l: "BL", v: p["⏳Backlog"] || 0, c: C.bg4, ph: "⏳Backlog" },
+]
 
 const TabPanorama = React.memo(function TabPanorama({ analysis: an, items, onDrillDown }) {
   const [sec, setSec] = useState("squads");
@@ -51,9 +61,12 @@ const TabPanorama = React.memo(function TabPanorama({ analysis: an, items, onDri
         );
         return SQUADS.map((sq) => {
         const d = an.bySquad[sq.name]; if (!d) return null;
-        const act = (d.phases["🚧 Sprint"] || 0) + (d.phases["👀 Review"] || 0) + (d.phases["⚙️ Modificación"] || 0);
-        const sqOverdue = (an.overdue || []).filter((it) => normalizeSquad(it.column_values?.color_mkz0s203) === sq.name);
-        const sqNoCrono = (an.noCrono || []).filter((it) => normalizeSquad(it.column_values?.color_mkz0s203) === sq.name);
+        const activos = (p) => (p?.["🚧 Sprint"] || 0) + (p?.["👀 Review"] || 0) + (p?.["⚙️ Modificación"] || 0);
+        const act = activos(d.phases);
+        const actSub = activos(d.subPhases);
+        // Mismo criterio que el resto del análisis: se atribuye por responsable.
+        const sqOverdue = (an.overdue || []).filter((it) => squadOfTask(it) === sq.name);
+        const sqNoCrono = (an.noCrono || []).filter((it) => squadOfTask(it) === sq.name);
         const cardId = `squad:${sq.id}`;
         const isOpen = !collapsed.has(cardId);
         return (
@@ -71,16 +84,30 @@ const TabPanorama = React.memo(function TabPanorama({ analysis: an, items, onDri
                 <span style={{ fontSize: 14, fontWeight: 700, color: sq.color }}>{sq.name} <span style={{ fontWeight: 500, color: C.tx3, fontSize: 12 }}>· {sq.lead}</span></span>
               </span>
               <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
-                <span style={{ fontSize: 12, color: C.tx3 }}>{act} activos</span>
+                <span style={{ fontSize: 12, color: C.tx3 }}>{act} tareas · {actSub} subtareas</span>
                 {sqOverdue.length > 0 && <span style={{ fontSize: 11, fontWeight: 700, color: C.red }}>🔴 {sqOverdue.length} venc.</span>}
                 {(d.phases["🚫 Detenido"] || 0) > 0 && <span style={{ fontSize: 11, fontWeight: 700, color: C.red }}>🚫 {d.phases["🚫 Detenido"]} det.</span>}
               </div>
             </div>
             {isOpen && (<>
-              <Bar h={14} segs={[{ l: "Spr", v: d.phases["🚧 Sprint"] || 0, c: C.yellow, ph: "🚧 Sprint" }, { l: "Rev", v: d.phases["👀 Review"] || 0, c: C.cyan, ph: "👀 Review" }, { l: "Mod", v: d.phases["⚙️ Modificación"] || 0, c: C.purple, ph: "⚙️ Modificación" }, { l: "Det", v: d.phases["🚫 Detenido"] || 0, c: C.red, ph: "🚫 Detenido" }, { l: "BL", v: d.phases["⏳Backlog"] || 0, c: C.bg4, ph: "⏳Backlog" }]} onSegmentClick={onDrillDown ? (seg) => {
-                const filtered = items.filter(it => normalizeSquad(it.column_values?.color_mkz0s203) === sq.name && it.column_values?.color_mkz09na === seg.ph);
-                onDrillDown({ phase: `${sq.name} — ${seg.l}`, items: filtered });
-              } : undefined} />
+              {/* Dos barras separadas, tareas y subtareas. No se fusionan a
+                  propósito: son niveles distintos de trabajo y mezclarlos cambiaría
+                  el significado de los números que ya se venían leyendo. */}
+              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
+                <span style={{ fontSize: 9, fontWeight: 700, color: C.tx3, letterSpacing: 1, textTransform: "uppercase", minWidth: 60 }}>Tareas</span>
+                <span style={{ flex: 1 }}>
+                  <Bar h={14} segs={PHASE_SEGS(d.phases)} onSegmentClick={onDrillDown ? (seg) => {
+                    const filtered = items.filter(it => squadOfTask(it) === sq.name && it.column_values?.color_mkz09na === seg.ph);
+                    onDrillDown({ phase: `${sq.name} — Tareas ${seg.l}`, items: filtered });
+                  } : undefined} />
+                </span>
+              </div>
+              {d.subTotal > 0 && (
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ fontSize: 9, fontWeight: 700, color: C.tx3, letterSpacing: 1, textTransform: "uppercase", minWidth: 60 }}>Subtareas</span>
+                  <span style={{ flex: 1 }}><Bar h={14} segs={PHASE_SEGS(d.subPhases)} /></span>
+                </div>
+              )}
               {sqOverdue.length > 0 && (
                 <div style={{ marginTop: 8, background: "rgba(255,59,48,.06)", borderRadius: 8, padding: "6px 10px", borderLeft: "3px solid var(--red)" }}>
                   <div style={{ fontSize: 10, fontWeight: 700, color: C.red, textTransform: "uppercase", letterSpacing: 1, marginBottom: 3 }}>Vencidos · {sqOverdue.length}</div>
@@ -146,7 +173,7 @@ const TabPanorama = React.memo(function TabPanorama({ analysis: an, items, onDri
               {isOpen && (
                 <div style={{ maxHeight: 220, overflowY: "auto" }}>
                   {g.items.map((it) => {
-                    const sq = SQUADS.find((s) => s.name === normalizeSquad(it.column_values?.color_mkz0s203));
+                    const sq = SQUADS.find((s) => s.name === squadOfTask(it));
                     return (
                       <div key={it.id} style={{ display: "flex", gap: 6, alignItems: "center", padding: "4px 0", borderBottom: "1px solid var(--bg3)", fontSize: 12 }}>
                         <span style={{ width: 8, height: 8, borderRadius: "50%", background: sq?.color || C.tx3, flexShrink: 0 }} />

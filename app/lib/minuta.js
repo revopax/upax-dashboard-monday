@@ -1,7 +1,7 @@
 'use client'
 // lib/minuta.js — generador de texto plano de la minuta
 import { TODAY_STR, SQUADS, PERSONAS } from './constants'
-import { WEEK, shortName, normalizeSquad, getSprintRoadmap, formatLongDate } from './utils'
+import { WEEK, shortName, normalizeSquad, getSprintRoadmap, formatLongDate, squadOfTask } from './utils'
 
 export function generateMinuta(wd, analysis, gddData, mqlBreakdown, blockTimes, items) {
   const an = analysis, comps = wd?.compromisos || [];
@@ -101,7 +101,7 @@ export function generateMinuta(wd, analysis, gddData, mqlBreakdown, blockTimes, 
       const d = an.bySquad[sq.name]; if (!d) return;
       const act = (d.phases["🚧 Sprint"]||0)+(d.phases["👀 Review"]||0)+(d.phases["⚙️ Modificación"]||0);
       const det2 = d.phases["🚫 Detenido"]||0;
-      const ven2 = (an.overdue||[]).filter(it => normalizeSquad(it.column_values?.color_mkz0s203) === sq.name).length;
+      const ven2 = (an.overdue||[]).filter(it => squadOfTask(it) === sq.name).length;
       if (act > 0 || det2 > 0 || ven2 > 0) {
         t += `   · ${sq.name}: ${act} activos`;
         if (det2) t += `, ${det2} detenido${det2>1?"s":""}`;

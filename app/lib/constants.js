@@ -47,8 +47,13 @@ export const SQUAD_ALIASES = {
   "PR & Brand": "Portafolio y Ecosistema",
   "RevOps": "RevOps & Analytics",
   "Squad 2": "Portafolio y Ecosistema",
-  "Mkt Corp": "Mkt Corp",
   "Seleccionar": "Sin asignar",
+
+  // Etiquetas que el board usa hoy y que no coincidían exactamente con el nombre
+  // canónico. Sin estas tres, 77 items no resolvían a ningún squad.
+  "RevOps y Analytics": "RevOps & Analytics",  // el board usa "y", el canónico "&"
+  "Web & Contenidos": "Web y contenidos",      // el board usa "&", el canónico "y"
+  "Mkt Político": "Político-Electoral",
 
   // ── Reorg jul-2026: nombres viejos que ya no son canonicos ──────────────────
   "Inbound Studio": "Performance y Conversión", // ex-Inbound Studio → hoy de Fernando
@@ -126,7 +131,26 @@ export const PERSONAS = [
   { name: "Leodegario",              squad: "Outbound y Pipeline",      sdr: true },
   { name: "Elizabeth Gómez",         squad: "Outbound y Pipeline",      sdr: true },
   { name: "Angel Toledano",          squad: "Político-Electoral",       star: true },
+
+  // INACTIVOS — no aparecen en desplegables (PersonSelect los filtra), pero siguen
+  // atribuyendo su trabajo al squad correcto en Panorama y en la minuta.
+  //
+  // Existen porque salieron del área con trabajo todavía activo en Monday, y sin
+  // ellos esos items caerían al respaldo por etiqueta. Los gerentes los reasignan
+  // a mano; cuando ya no tengan items, se pueden borrar de aquí.
+  { name: "Jean Pierre Barroilhet",  squad: "Performance y Conversión", inactive: true },
+  { name: "Andrea Jurado",           squad: "Performance y Conversión", inactive: true },
+  { name: "Aliosha Albor",           squad: "Outbound y Pipeline",      inactive: true },
+  // Cyndi trabaja con Portafolio pero no es del equipo de Mkt Corp: se marca
+  // inactive para atribuir sus items sin ofrecerla en los selectores.
+  { name: "Cyndi Lilibeth Pérez Ramírez", squad: "Portafolio y Ecosistema", inactive: true },
 ];
+
+// PERSON_ALIASES — nombres distintos en Monday que son la MISMA persona.
+// "Alejandro Maciel" es la cuenta de Monday de Efraín Maciel.
+export const PERSON_ALIASES = {
+  "Alejandro Maciel": "Efraín Maciel",
+};
 
 // MONDAY_USERS movido a lib/server-constants.js — IDs no deben estar en el bundle del frontend
 // La API route /api/monday-write ahora resuelve personName → personId server-side

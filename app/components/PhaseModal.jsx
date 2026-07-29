@@ -1,7 +1,7 @@
 'use client'
 import React, { useEffect } from 'react'
 import { SQUADS } from '../lib/constants'
-import { normalizeSquad, parseTL, isOverdue, shortName } from '../lib/utils'
+import { normalizeSquad, parseTL, isOverdue, shortName, squadOfTask } from '../lib/utils'
 import { C, R } from '../lib/tokens'
 
 function PhaseModal({ phaseModal, onClose }) {
@@ -27,7 +27,7 @@ function PhaseModal({ phaseModal, onClose }) {
           {phaseModal.items.length === 0
             ? <div style={{ textAlign: "center", padding: "24px 0", color: C.tx3, fontSize: 13 }}>Sin items</div>
             : phaseModal.items.map((it, i) => {
-                const sq = SQUADS.find(s => s.name === normalizeSquad(it.column_values?.color_mkz0s203));
+                const sq = SQUADS.find(s => s.name === squadOfTask(it));
                 const tl = parseTL(it.column_values?.timerange_mkzcqv0j);
                 const od = isOverdue(it);
                 return (

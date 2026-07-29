@@ -1,7 +1,7 @@
 'use client'
 // lib/utils.js — funciones puras de fecha, analisis y helpers
 // Fuente canonica para TODAS las funciones utilitarias. constants.js solo tiene datos.
-import { TODAY_STR, TODAY, PERSONAS, SQUAD_ALIASES, SQUADS, normalizeSquad as _normalizeSquad } from './constants'
+import { TODAY_STR, TODAY, PERSONAS, PERSON_ALIASES, SQUAD_ALIASES, SQUADS, normalizeSquad as _normalizeSquad } from './constants'
 
 // Re-export normalizeSquad de constants.js (vive ahi porque depende de SQUAD_ALIASES)
 export { normalizeSquad } from './constants'
@@ -14,31 +14,39 @@ export const PERSON_NAMES = PERSONAS.map((p) => p.name);
 // En la practica el universo de nombres es ~30 personas, asi que el cache se estabiliza rapido.
 // Si el equipo creciera a >500 personas, considerar un LRU cache o un WeakMap.
 const _nameNormCache = new Map();
+
+// Sin acentos y en minúsculas. Es lo que hacía falta: Monday trae "Adrian Gonzalez"
+// y PERSONAS dice "Adrián González"; como la comparación exigía que TODAS las partes
+// estuvieran contenidas, "adrian" nunca contenía "adrián" y 10 items quedaban sin
+// squad. Comparar sin diacríticos resuelve ese caso y los que vengan.
+const _fold = (s) => String(s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+
 export function normalizePersonName(mondayName) {
   if (!mondayName) return mondayName;
   if (_nameNormCache.has(mondayName)) return _nameNormCache.get(mondayName);
-  if (PERSON_NAMES.includes(mondayName)) {
-    _nameNormCache.set(mondayName, mondayName);
-    return mondayName;
-  }
-  const lower = mondayName.toLowerCase();
-  for (const pn of PERSON_NAMES) {
-    const parts = pn.toLowerCase().split(" ");
-    if (parts.every(p => lower.includes(p))) { _nameNormCache.set(mondayName, pn); return pn; }
-  }
-  for (const pn of PERSON_NAMES) {
-    const parts = pn.toLowerCase().split(" ");
-    if (parts.length >= 2 && lower.includes(parts[0]) && parts.slice(1).some(p => lower.includes(p))) { _nameNormCache.set(mondayName, pn); return pn; }
+  const hit = (v) => { _nameNormCache.set(mondayName, v); return v; };
+
+  // Alias explícitos: cuentas de Monday con otro nombre (ver PERSON_ALIASES).
+  if (PERSON_ALIASES[mondayName]) return hit(PERSON_ALIASES[mondayName]);
+  if (PERSON_NAMES.includes(mondayName)) return hit(mondayName);
+
+  const lower = _fold(mondayName);
+  for (const [alias, real] of Object.entries(PERSON_ALIASES)) {
+    if (_fold(alias) === lower) return hit(real);
   }
   for (const pn of PERSON_NAMES) {
-    const firstName = pn.toLowerCase().split(" ")[0];
-    if (firstName.length > 4 && lower.startsWith(firstName)) {
-      _nameNormCache.set(mondayName, pn);
-      return pn;
-    }
+    const parts = _fold(pn).split(" ");
+    if (parts.every(p => lower.includes(p))) return hit(pn);
   }
-  _nameNormCache.set(mondayName, mondayName);
-  return mondayName;
+  for (const pn of PERSON_NAMES) {
+    const parts = _fold(pn).split(" ");
+    if (parts.length >= 2 && lower.includes(parts[0]) && parts.slice(1).some(p => lower.includes(p))) return hit(pn);
+  }
+  for (const pn of PERSON_NAMES) {
+    const firstName = _fold(pn).split(" ")[0];
+    if (firstName.length > 4 && lower.startsWith(firstName)) return hit(pn);
+  }
+  return hit(mondayName);
 }
 export function isTeamMember(name) { return PERSON_NAMES.includes(normalizePersonName(name)); }
 
@@ -132,6 +140,49 @@ function ownershipFor(personText, fallbackLabel, squadName) {
   // `owners` = los de este squad; `allOwners` = todos los reconocidos, para poder
   // mostrar "Varios owners" con la lista completa en el tooltip.
   return { belongs, owners: mine, allOwners: [...mine, ...others] };
+}
+
+// primarySquadOf — UN solo squad para un texto de responsables. Devuelve null si
+// ninguno es reconocible, o si hay responsables de squads distintos (ambiguo).
+//
+// Solo cuentan squads que existen en SQUADS: hay personas con squad "CMO" o "PMO",
+// que son roles y no squads de la weekly. Sin este filtro sus items se atribuían a
+// "CMO" y desaparecían de Panorama, que solo itera SQUADS.
+const SQUAD_NAMES = new Set(SQUADS.map((s) => s.name));
+function primarySquadOf(personText) {
+  const squads = new Set();
+  for (const raw of String(personText || '').split(/[,;]/)) {
+    const name = raw.trim();
+    if (!name) continue;
+    const persona = PERSONAS.find((p) => p.name === normalizePersonName(name));
+    if (persona && SQUAD_NAMES.has(persona.squad)) squads.add(persona.squad);
+  }
+  return squads.size === 1 ? [...squads][0] : null;
+}
+
+// squadOfTask / squadOfSubtask — a qué squad se ATRIBUYE un trabajo, para conteos.
+//
+// Distinto de getSquadWorkItems, que es para listas: ahí un item con dueños de
+// varios squads aparece en todos. Aquí no puede, porque las barras de Panorama son
+// una partición y deben sumar el total; si un item contara dos veces, la suma por
+// squad dejaría de cuadrar con el total del board.
+//
+// Cadena de resolución de una TAREA:
+//   responsables de un mismo squad → ese squad
+//   ambiguo o sin reconocer        → etiqueta de squad del board
+export function squadOfTask(item) {
+  const cv = item?.column_values || {};
+  return primarySquadOf(cv.person) || normalizeSquad(cv.color_mkz0s203 || "?");
+}
+
+// Cadena de resolución de una SUBTAREA:
+//   un solo squad entre sus responsables → ese squad
+//   varios squads (multi-squad)          → el squad de la TAREA PADRE
+//   sin responsables reconocibles        → el squad de la tarea padre
+// La subtarea no tiene etiqueta propia en Monday, así que el último respaldo es
+// siempre el de su tarea, que ya resuelve por squadOfTask.
+export function squadOfSubtask(sub, parentItem) {
+  return primarySquadOf(sub?.column_values?.person) || squadOfTask(parentItem);
 }
 
 // getSquadWorkItems — trabajo activo de un squad: subtareas primero, luego tareas.

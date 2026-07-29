@@ -1,7 +1,7 @@
 'use client'
 import React, { useState, useRef } from 'react'
 import { SQUADS, STORE_KEY, PERSONAS, TODAY } from '../lib/constants'
-import { shortName, parseTL, daysDiff, normalizeSquad, copyToClipboard, normalizeFocos, formatLongDate } from '../lib/utils'
+import { shortName, parseTL, daysDiff, normalizeSquad, copyToClipboard, normalizeFocos, formatLongDate, squadOfTask } from '../lib/utils'
 import { storeSet } from '../lib/storage'
 import { authHeaders } from '../lib/api'
 import { generateMinuta } from '../lib/minuta'
@@ -193,7 +193,7 @@ function renderMinutaVisual(text, wd2, an, gdd2) {
             const dw = an2.bySquadWeek?.[sq.name];
             const act  = dw ? (dw.phases["🚧 Sprint"]||0)+(dw.phases["👀 Review"]||0)+(dw.phases["⚙️ Modificación"]||0) : 0;
             const det2 = d.phases["🚫 Detenido"]||0;
-            const ven2 = (an2.overdue||[]).filter(it => normalizeSquad(it.column_values?.color_mkz0s203)===sq.name).length;
+            const ven2 = (an2.overdue||[]).filter(it => squadOfTask(it)===sq.name).length;
             const personasSemana = PERSONAS.filter(p => p.squad === sq.name && !p.sdr).map(p => {
               const ppw = an2.byPersonWeek[p.name];
               if (!ppw || ppw.total === 0) return null;
@@ -461,7 +461,7 @@ function PdfButton({ text, dateStr, wd, analysis, gddData }) {
         const dw = an.bySquadWeek?.[sq.name];
         const act = dw ? (dw.phases?.["🚧 Sprint"]||0)+(dw.phases?.["👀 Review"]||0)+(dw.phases?.["⚙️ Modificación"]||0) : 0;
         const det2 = d.phases?.["🚫 Detenido"]||0;
-        const ven2 = (an.overdue||[]).filter(it => normalizeSquad(it.column_values?.color_mkz0s203)===sq.name).length;
+        const ven2 = (an.overdue||[]).filter(it => squadOfTask(it)===sq.name).length;
         return `<div class="squad-row">
           <span class="squad-dot" style="background:${sq.color}"></span>
           <span class="squad-name" style="color:${sq.color}">${sq.name.split(" ")[0]}</span>

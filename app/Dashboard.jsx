@@ -12,6 +12,7 @@ import {
   parseTL, addDays, getMondayStr, isOverdue, isActive,
   WEEK, PREV_WEEK,
   overlapsThisWeek, copyToClipboard, weeklyClosed, weeklyHasContent, isWeeklyEnCurso, migrateWeekly,
+  squadOfTask, squadOfSubtask, WORK_COLS,
 } from "./lib/utils";
 import { storeGet, storeSet, storeDel, storeWeeklies } from "./lib/storage";
 import { fetchAllItems, sendToSlack, authHeaders } from "./lib/api";
@@ -446,18 +447,34 @@ export default function App() {
     const WEEK_END_STR = addDays(WEEK_START_STR, 4);
 
     items.forEach((it) => {
-      const cv = it.column_values || {}, ph = cv.color_mkz09na || "?", sq = normalizeSquad(cv.color_mkz0s203 || "?"), pr = cv.person;
+      const cv = it.column_values || {}, ph = cv.color_mkz09na || "?", pr = cv.person;
+      // El squad se atribuye por RESPONSABLE, no por la etiqueta del board: esa
+      // no se puede renombrar sin romper el histórico. squadOfTask cae a la
+      // etiqueta cuando los responsables no son concluyentes.
+      const sq = squadOfTask(it);
       const timeline = cv.timerange_mkzcqv0j, isThisWeek = overlapsThisWeek(timeline);
       if (timeline) parseTLCached(timeline);
 
       byPhase[ph] = (byPhase[ph] || 0) + 1;
       if (isThisWeek) byPhaseWeek[ph] = (byPhaseWeek[ph] || 0) + 1;
-      if (!bySquad[sq]) bySquad[sq] = { total: 0, phases: {} };
+      if (!bySquad[sq]) bySquad[sq] = { total: 0, phases: {}, subPhases: {}, subTotal: 0 };
       bySquad[sq].total++; bySquad[sq].phases[ph] = (bySquad[sq].phases[ph] || 0) + 1;
       if (isThisWeek && isActive(ph)) {
         if (!bySquadWeek[sq]) bySquadWeek[sq] = { total: 0, phases: {} };
         bySquadWeek[sq].total++; bySquadWeek[sq].phases[ph] = (bySquadWeek[sq].phases[ph] || 0) + 1;
       }
+
+      // Subtareas por squad, contadas aparte de las tareas: son otro nivel de
+      // trabajo y mezclarlas en la misma barra cambiaría el significado de los
+      // números que ya se venían leyendo. Cada subtarea se atribuye por su propio
+      // responsable, y si es ambiguo hereda el squad de su tarea (squadOfSubtask).
+      (it.subitems || []).forEach((sub) => {
+        const sph = sub.column_values?.[WORK_COLS.sub.phase] || "?";
+        const ssq = squadOfSubtask(sub, it);
+        if (!bySquad[ssq]) bySquad[ssq] = { total: 0, phases: {}, subPhases: {}, subTotal: 0 };
+        bySquad[ssq].subTotal++;
+        bySquad[ssq].subPhases[sph] = (bySquad[ssq].subPhases[sph] || 0) + 1;
+      });
 
       if (isActive(ph) && pr) pr.split(", ").forEach((p) => { if (!byPerson[p]) byPerson[p] = { items: 0, subitems: 0, total: 0 }; byPerson[p].items++; byPerson[p].total++; });
 

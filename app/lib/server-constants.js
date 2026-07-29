@@ -7,7 +7,11 @@ export const MONDAY_USERS = {
   "Franco Cruzat": 65476480,
   "Paul Zárate": 65476499,
   "Arath Escamilla": 71090387,
-  "Andry Carvajal": 98248405, "Alejandro Maciel": 77343229,
+  "Andry Carvajal": 98248405,
+  // La cuenta de Monday de Efraín se llama "Alejandro Maciel". Se registra bajo
+  // ambos nombres: sin la entrada de "Efraín Maciel" no se le podían asignar
+  // compromisos desde el dashboard, porque /api/monday-write resuelve por nombre.
+  "Efraín Maciel": 77343229, "Alejandro Maciel": 77343229,
   "Iris Múgica": 65476486, "Fernando Borges": 77871300,
   "Marco Antonio Juárez": 69017925, "Diana Cruz": 70199066,
   "Santiago Arango": 77820047, "César Mejía": 67757625,
