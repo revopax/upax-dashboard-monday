@@ -2,14 +2,15 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { TODAY_STR } from '../lib/constants'
-import { C, F, R } from '../lib/tokens'
+import { C, R } from '../lib/tokens'
+import { useAnchoredPanel, panelStyle } from '../hooks/useAnchoredPanel'
 
 // DateField — campo de fecha con calendario propio.
 //
 // Reemplaza a <input type="date">. El calendario nativo de Chrome no se puede
 // estilizar (lo dibuja el navegador fuera de la página, ninguna regla CSS lo
-// alcanza) y además solo abría al hacer clic en su ícono: pinchar sobre el
-// "dd/mm/aaaa" ponía el cursor a escribir en vez de abrirlo.
+// alcanza) y además solo abría desde su ícono: pinchar sobre el "dd/mm/aaaa"
+// ponía el cursor a escribir en vez de abrirlo.
 //
 // El valor sigue siendo "YYYY-MM-DD" y el onChange sigue emitiendo
 // { target: { value } }, así que los lugares que lo usan no cambian de contrato.
@@ -17,7 +18,7 @@ import { C, F, R } from '../lib/tokens'
 // OJO con las fechas: aquí NUNCA se hace new Date("2026-07-27"). Eso se parsea
 // como medianoche UTC y en CDMX (UTC-6) retrocede al día anterior — es el mismo
 // bug que ya estaba documentado en utils.js. Todo se arma con componentes
-// numéricos locales.
+// numéricos locales, que sí son hora local.
 
 // Helpers exportados para poder testear el calendario sin renderizarlo: el
 // cruce de mes/año y el arranque en lunes son justo donde se cuelan los errores.
@@ -33,17 +34,23 @@ export const daysInMonth = (y, m) => new Date(y, m + 1, 0).getDate()
 export const firstWeekday = (y, m) => (new Date(y, m, 1).getDay() + 6) % 7
 
 export const MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"]
+const MESES_3 = MESES.map((m) => m.slice(0, 3).charAt(0).toUpperCase() + m.slice(1, 3))
 const DIAS = ["L", "M", "M", "J", "V", "S", "D"]
 
-export const fmtCorto = (iso) => {
+// Siempre día, mes y año: "02 Jul 2026". Sin el año, una fecha de otro año se
+// leía igual que una de este.
+export const fmtFecha = (iso) => {
   const p = parseISO(iso)
   if (!p) return null
-  return `${p.d} ${MESES[p.m].slice(0, 3)}`
+  return `${pad(p.d)} ${MESES_3[p.m]} ${p.y}`
 }
+
+// Comparar strings "YYYY-MM-DD" es comparar fechas: el orden lexicográfico y el
+// cronológico coinciden. Hoy NO es pasado, se puede elegir.
+export const esPasado = (iso) => iso < TODAY_STR
 
 export function DateField({ value, onChange, label = "Fecha", style = {}, disabled = false }) {
   const [open, setOpen] = useState(false)
-  const [pos, setPos] = useState(null)
   const hoy = useMemo(() => parseISO(TODAY_STR), [])
   const sel = parseISO(value)
   // Mes que se está viendo; arranca en el del valor, o en el actual.
@@ -53,32 +60,22 @@ export function DateField({ value, onChange, label = "Fecha", style = {}, disabl
   const [cursor, setCursor] = useState(-1)
   const ref = useRef(null)
   const panelRef = useRef(null)
-
-  const place = useCallback(() => {
-    const el = ref.current
-    if (!el) return
-    const r = el.getBoundingClientRect()
-    const ALTO = 290, ANCHO = 236
-    const abajo = r.bottom + ALTO < window.innerHeight || r.top < ALTO
-    setPos({
-      top: abajo ? r.bottom + 6 : r.top - ALTO - 6,
-      left: Math.min(Math.max(8, r.left), window.innerWidth - ANCHO - 8),
-    })
-  }, [])
+  const pos = useAnchoredPanel({ open, anchorRef: ref, panelRef })
 
   const abrir = useCallback(() => {
     if (disabled) return
     const p = parseISO(value) || hoy
     setView({ y: p.y, m: p.m })
     setCursor(-1)
-    place()
     setOpen(true)
-  }, [disabled, value, hoy, place])
+  }, [disabled, value, hoy])
 
   const cerrar = useCallback(() => { setOpen(false); setCursor(-1) }, [])
 
   const elegir = useCallback((d) => {
-    onChange({ target: { value: toISO(view.y, view.m, d) } })
+    const iso = toISO(view.y, view.m, d)
+    if (esPasado(iso)) return
+    onChange({ target: { value: iso } })
     cerrar()
     ref.current?.focus()
   }, [onChange, view, cerrar])
@@ -102,8 +99,12 @@ export function DateField({ value, onChange, label = "Fecha", style = {}, disabl
   }, [open, cerrar])
 
   const total = daysInMonth(view.y, view.m)
+  // Hacia atrás solo hasta el mes actual: más atrás está todo deshabilitado, así
+  // que navegar ahí no lleva a ningún lado.
+  const puedeAtras = view.y * 12 + view.m > hoy.y * 12 + hoy.m
 
   const moverMes = (delta) => {
+    if (delta < 0 && !puedeAtras) return
     setView((v) => {
       const m = v.m + delta
       return { y: v.y + Math.floor(m / 12), m: ((m % 12) + 12) % 12 }
@@ -124,21 +125,26 @@ export function DateField({ value, onChange, label = "Fecha", style = {}, disabl
       if (e.key === "Enter" || e.key === " " || e.key === "ArrowDown") { e.preventDefault(); e.stopPropagation(); abrir() }
       return
     }
-    const base = cursor > 0 ? cursor : (sel && sel.y === view.y && sel.m === view.m ? sel.d : 1)
+
+    // Día de partida: el que tenga el foco, si no el elegido cuando está a la
+    // vista, si no hoy en el mes actual, si no el 1.
+    const base = cursor > 0 ? cursor
+      : (sel && sel.y === view.y && sel.m === view.m) ? sel.d
+      : (hoy.y === view.y && hoy.m === view.m) ? hoy.d
+      : 1
+
     const mover = (n) => {
       e.preventDefault()
-      const next = base + n
-      if (next < 1) {
-        // Al salir por arriba se cae al último día del mes anterior, cruzando el
-        // año cuando toca (enero → diciembre del año pasado).
-        const py = view.m === 0 ? view.y - 1 : view.y
-        const pm = (view.m + 11) % 12
-        moverMes(-1)
-        setCursor(daysInMonth(py, pm))
-      }
-      else if (next > total) { moverMes(1); setCursor(1) }
-      else setCursor(next)
+      // Aritmética con Date sobre componentes numéricos: resuelve sola el cruce
+      // de mes y de año, incluidos los bisiestos.
+      const d0 = new Date(view.y, view.m, base)
+      d0.setDate(d0.getDate() + n)
+      const y = d0.getFullYear(), m = d0.getMonth(), d = d0.getDate()
+      if (esPasado(toISO(y, m, d))) return   // no se entra al pasado
+      if (y !== view.y || m !== view.m) setView({ y, m })
+      setCursor(d)
     }
+
     if (e.key === "ArrowRight") mover(1)
     else if (e.key === "ArrowLeft") mover(-1)
     else if (e.key === "ArrowDown") mover(7)
@@ -150,7 +156,7 @@ export function DateField({ value, onChange, label = "Fecha", style = {}, disabl
   for (let i = 0; i < firstWeekday(view.y, view.m); i++) celdas.push(null)
   for (let d = 1; d <= total; d++) celdas.push(d)
 
-  const texto = fmtCorto(value)
+  const texto = fmtFecha(value)
 
   return (
     <>
@@ -175,20 +181,21 @@ export function DateField({ value, onChange, label = "Fecha", style = {}, disabl
         <span style={{ color: texto ? C.tx : C.tx3 }}>{texto || "dd/mm/aaaa"}</span>
       </button>
 
-      {open && typeof document !== "undefined" && pos && createPortal(
+      {open && typeof document !== "undefined" && createPortal(
         <div
           ref={panelRef}
           role="dialog"
           aria-label={`${label}: elegir fecha`}
           onKeyDown={onKeyDown}
-          style={{
-            position: "fixed", top: pos.top, left: pos.left, zIndex: 300, width: 236,
+          style={panelStyle(pos, {
+            zIndex: 300, width: 236,
+            maxHeight: pos?.maxHeight, overflowY: "auto",
             background: C.bg2, border: `1px solid ${C.border}`, borderRadius: R.default,
             boxShadow: C.shadowLg, padding: 10, animation: "fadeIn .12s ease both",
-          }}
+          })}
         >
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-            <button type="button" className="cal-nav" onClick={() => moverMes(-1)} aria-label="Mes anterior">‹</button>
+            <button type="button" className="cal-nav" onClick={() => moverMes(-1)} disabled={!puedeAtras} aria-label="Mes anterior">‹</button>
             <span style={{ fontSize: 12, fontWeight: 600, color: C.tx, textTransform: "capitalize" }}>
               {MESES[view.m]} {view.y}
             </span>
@@ -204,7 +211,9 @@ export function DateField({ value, onChange, label = "Fecha", style = {}, disabl
           <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 2 }}>
             {celdas.map((d, i) => {
               if (d === null) return <span key={`v${i}`} />
-              const esHoy = hoy && hoy.y === view.y && hoy.m === view.m && hoy.d === d
+              const iso = toISO(view.y, view.m, d)
+              const pasado = esPasado(iso)
+              const esHoy = hoy.y === view.y && hoy.m === view.m && hoy.d === d
               const esSel = sel && sel.y === view.y && sel.m === view.m && sel.d === d
               const esCursor = cursor === d
               return (
@@ -212,13 +221,16 @@ export function DateField({ value, onChange, label = "Fecha", style = {}, disabl
                   key={d}
                   type="button"
                   className="cal-day"
+                  // Deshabilitado y no solo atenuado: así tampoco se llega por
+                  // teclado ni cuenta como objetivo de clic.
+                  disabled={pasado}
                   aria-label={`${d} de ${MESES[view.m]} de ${view.y}`}
                   aria-current={esHoy ? "date" : undefined}
                   aria-pressed={esSel}
                   onClick={() => elegir(d)}
                   style={{
-                    background: esSel ? C.blue : esCursor ? C.bg3 : "transparent",
-                    color: esSel ? "#fff" : esHoy ? C.blue : C.tx,
+                    background: esSel ? C.blue : esCursor && !pasado ? C.bg3 : "transparent",
+                    color: esSel ? "#fff" : pasado ? C.bg4 : esHoy ? C.blue : C.tx,
                     fontWeight: esSel || esHoy ? 700 : 400,
                     boxShadow: esHoy && !esSel ? `inset 0 0 0 1px ${C.blue}` : "none",
                   }}

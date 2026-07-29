@@ -93,7 +93,12 @@ select option:checked{font-weight:600}
   transition:background-color .1s ease;
 }
 /* :not() para no tapar el azul del día seleccionado, que se pinta inline. */
-.cal-day:hover:not([aria-pressed="true"]){background-color:var(--bg3)}
+.cal-day:hover:not([aria-pressed="true"]):not(:disabled){background-color:var(--bg3)}
+/* Fechas pasadas: no se pueden elegir (hoy sí). Se dejan visibles y atenuadas en
+   vez de ocultarlas, para no romper la rejilla del mes. */
+.cal-day:disabled{cursor:default}
+.cal-nav:disabled{opacity:.3;cursor:default}
+.cal-nav:disabled:hover{background:none;color:var(--tx3)}
 .cal-action{
   background:none;border:none;padding:3px 6px;border-radius:var(--r-xs);
   font-family:var(--sans);font-size:var(--ts-sm);font-weight:600;color:var(--blue);

@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom'
 import { PERSONAS } from '../lib/constants'
 import { C, F, R } from '../lib/tokens'
 import { shortName } from '../lib/utils'
+import { useAnchoredPanel, panelStyle } from '../hooks/useAnchoredPanel'
 
 // OwnersHoverCard — responsables de una fila, con card propio en vez del tooltip
 // nativo del navegador.
@@ -18,8 +19,6 @@ import { shortName } from '../lib/utils'
 //   2. En modo presentador `.fade` lleva un transform: scale(), y un elemento
 //      position:fixed adentro se posicionaría contra ESE elemento y no contra la
 //      ventana. Fuera del árbol, las coordenadas de getBoundingClientRect valen.
-
-const GAP = 6
 
 // Squad de cada responsable, para poder marcar a los que son de otro equipo: es la
 // razón de que la fila diga "Varios owners" en vez de un nombre suelto.
@@ -39,41 +38,34 @@ function Spinner({ size = 10 }) {
 }
 
 export function OwnersHoverCard({ owners = [], mine = [], person, squadName, loading = false }) {
-  const [pos, setPos] = useState(null)
+  const [abierto, setAbierto] = useState(false)
   const ref = useRef(null)
+  const panelRef = useRef(null)
+  // `end` alinea el card por la derecha del texto: la columna de responsables va
+  // pegada al margen derecho de la fila. El hook lo mete a la ventana si aun así
+  // no cabe.
+  const pos = useAnchoredPanel({ open: abierto, anchorRef: ref, panelRef, align: "end" })
 
   const names = owners.length ? owners : []
   const multi = names.length > 1
   // Con un solo responsable el nombre ya se lee en la fila; el card sobra.
   const interactive = multi || loading
 
-  const open = useCallback(() => {
-    const el = ref.current
-    if (!el || typeof document === "undefined") return
-    const r = el.getBoundingClientRect()
-    // Arriba por defecto; abajo si no cabe. `right` ancla el card al final de la
-    // etiqueta, que siempre está sobre el margen derecho de la fila.
-    const below = r.top < 160
-    setPos({
-      right: Math.max(8, window.innerWidth - r.right),
-      top: below ? r.bottom + GAP : null,
-      bottom: below ? null : window.innerHeight - r.top + GAP,
-    })
-  }, [])
-  const close = useCallback(() => setPos(null), [])
+  const open = useCallback(() => setAbierto(true), [])
+  const close = useCallback(() => setAbierto(false), [])
 
   // El card queda anclado a coordenadas de ventana, así que al hacer scroll en la
   // lista se despegaría de su fila: mouseleave no dispara hasta que el mouse se
   // mueve. En captura, para enterarse también del scroll del contenedor interno.
   useEffect(() => {
-    if (!pos) return
+    if (!abierto) return
     window.addEventListener("scroll", close, true)
     window.addEventListener("resize", close)
     return () => {
       window.removeEventListener("scroll", close, true)
       window.removeEventListener("resize", close)
     }
-  }, [pos, close])
+  }, [abierto, close])
 
   const label = multi ? "Varios owners" : (shortName(mine?.[0] || names[0] || person) || "—")
 
@@ -100,17 +92,18 @@ export function OwnersHoverCard({ owners = [], mine = [], person, squadName, loa
         {label}
       </span>
 
-      {pos && typeof document !== "undefined" && createPortal(
+      {abierto && typeof document !== "undefined" && createPortal(
         <div
+          ref={panelRef}
           role="tooltip"
-          style={{
-            position: "fixed", zIndex: 200,
-            right: pos.right, top: pos.top ?? undefined, bottom: pos.bottom ?? undefined,
+          style={panelStyle(pos, {
+            zIndex: 200,
+            maxHeight: pos?.maxHeight, overflowY: "auto",
             background: C.bg2, border: `1px solid ${C.border}`, borderRadius: R.sm,
             boxShadow: C.shadowLg, padding: "8px 10px",
             minWidth: 150, maxWidth: 260,
             pointerEvents: "none", animation: "fadeIn .12s ease both",
-          }}
+          })}
         >
           <div style={{ fontSize: 9, fontWeight: 700, color: C.tx3, textTransform: "uppercase", letterSpacing: 1, marginBottom: names.length ? 5 : 0 }}>
             Responsables{names.length > 1 ? ` · ${names.length}` : ""}

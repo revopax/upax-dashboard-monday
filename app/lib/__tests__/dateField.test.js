@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { DateField, toISO, parseISO, daysInMonth, firstWeekday, fmtCorto } from '../../components/DateField'
+import { DateField, toISO, parseISO, daysInMonth, firstWeekday, fmtFecha, esPasado } from '../../components/DateField'
+import { TODAY_STR } from '../constants'
 
 const render = (props) => renderToStaticMarkup(React.createElement(DateField, props))
 
@@ -52,14 +53,17 @@ describe('DateField — rejilla del mes', () => {
 })
 
 describe('DateField — etiqueta del control', () => {
-  it('muestra la fecha en corto cuando hay valor', () => {
-    expect(fmtCorto('2026-07-27')).toBe('27 jul')
-    expect(fmtCorto('2026-01-03')).toBe('3 ene')
-    expect(fmtCorto('2026-12-25')).toBe('25 dic')
+  // Siempre día, mes y año: sin el año una fecha de otro año se leía igual que
+  // una de este. Día a dos dígitos y mes capitalizado: "02 Jul 2026".
+  it('muestra día, mes y año', () => {
+    expect(fmtFecha('2026-07-27')).toBe('27 Jul 2026')
+    expect(fmtFecha('2026-01-03')).toBe('03 Ene 2026')
+    expect(fmtFecha('2026-12-25')).toBe('25 Dic 2026')
+    expect(fmtFecha('2025-07-02')).toBe('02 Jul 2025')
   })
 
   it('sin valor no inventa nada', () => {
-    expect(fmtCorto('')).toBeNull()
+    expect(fmtFecha('')).toBeNull()
   })
 
   it('renderiza el placeholder cuando está vacío', () => {
@@ -69,7 +73,7 @@ describe('DateField — etiqueta del control', () => {
 
   it('renderiza la fecha elegida y la expone completa en el aria-label', () => {
     const html = render({ value: '2026-07-27', onChange: () => {}, label: 'Fecha del compromiso' })
-    expect(html).toContain('27 jul')
+    expect(html).toContain('27 Jul 2026')
     expect(html).toContain('Fecha del compromiso: 2026-07-27')
   })
 
@@ -115,5 +119,36 @@ describe('las teclas de los paneles no se filtran a los atajos de la agenda', ()
     }
     // Una por rama: ArrowDown, ArrowUp, Enter y Escape.
     expect(handler.match(/stopPropagation/g)).toHaveLength(4)
+  })
+})
+
+// No se puede agendar hacia atrás: un compromiso o un blocker se ponen para hoy
+// o para adelante. Hoy SÍ es elegible — es el caso de "esto se cierra hoy".
+describe('DateField — no se eligen fechas pasadas', () => {
+  it('hoy no cuenta como pasado', () => {
+    expect(esPasado(TODAY_STR)).toBe(false)
+  })
+
+  it('ayer y cualquier fecha anterior sí', () => {
+    expect(esPasado('2020-01-01')).toBe(true)
+    expect(esPasado('1999-12-31')).toBe(true)
+  })
+
+  it('mañana y el futuro no', () => {
+    expect(esPasado('2099-01-01')).toBe(false)
+  })
+
+  // Comparar strings ISO es comparar fechas porque el orden lexicográfico y el
+  // cronológico coinciden; de ahí que el padding a dos dígitos sea obligatorio.
+  it('la comparación de strings ISO respeta el orden cronológico', () => {
+    const ordenadas = ['2025-12-31', '2026-01-01', '2026-01-09', '2026-01-10', '2026-02-01']
+    expect([...ordenadas].sort()).toEqual(ordenadas)
+  })
+
+  it('un valor pasado ya guardado se sigue mostrando', () => {
+    // Los compromisos de semanas anteriores tienen fecha vieja: la regla es para
+    // elegir, no para ocultar lo que ya está.
+    const html = render({ value: '2020-03-15', onChange: () => {} })
+    expect(html).toContain('15 Mar 2020')
   })
 })

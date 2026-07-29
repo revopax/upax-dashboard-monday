@@ -1,10 +1,12 @@
 'use client'
 import React, { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 // components/ui.jsx — componentes UI compartidos
 import { PERSONAS } from '../lib/constants'
 import { PHASE_SHORT } from '../lib/utils'
 import { C, TS, R, F } from '../lib/tokens'
 import { DateField } from './DateField'
+import { useAnchoredPanel, panelStyle } from '../hooks/useAnchoredPanel'
 
 export function Bar({ segs, h = 20, onSegmentClick }) {
   const t = segs.reduce((s, x) => s + x.v, 0); if (!t) return null;
@@ -98,7 +100,12 @@ export function PersonSelect({ value, onChange, style = {}, squad }) {
   const [filter, setFilter] = useState("");
   const [activeIdx, setActiveIdx] = useState(-1);
   const ref = useRef(null);
+  const btnRef = useRef(null);
   const listRef = useRef(null);
+  // matchAnchorWidth: el panel nunca queda más angosto que el control del que
+  // cuelga. Lo resuelve el hook antes de medir, para que la posición se calcule
+  // con el ancho definitivo.
+  const pos = useAnchoredPanel({ open, anchorRef: btnRef, panelRef: listRef, gap: 4, matchAnchorWidth: true });
   // Si se pasa `squad`, el selector solo muestra personas de ese squad.
   // Los `inactive` nunca se ofrecen: existen solo para atribuir trabajo viejo de
   // gente que salió del área, o de externos que no son del equipo de Mkt Corp.
@@ -111,11 +118,25 @@ export function PersonSelect({ value, onChange, style = {}, squad }) {
   // Flat list for keyboard nav
   const flatList = filteredGroups.flatMap(g => filtered.filter(p => p.squad === g));
 
+  // El panel vive en un portal, así que un clic dentro de él ya NO cae dentro de
+  // `ref`: sin comprobar también listRef, elegir a alguien cerraba la lista antes
+  // de que el clic llegara a registrarse. Se cierra además con scroll y resize,
+  // porque la posición está calculada contra la ventana.
   useEffect(() => {
     if (!open) return;
-    const handleClick = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    const close = () => setOpen(false);
+    const handleClick = (e) => {
+      if (ref.current?.contains(e.target) || listRef.current?.contains(e.target)) return;
+      setOpen(false);
+    };
     document.addEventListener("mousedown", handleClick);
-    return () => { document.removeEventListener("mousedown", handleClick); };
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("resize", close);
+    return () => {
+      document.removeEventListener("mousedown", handleClick);
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("resize", close);
+    };
   }, [open]);
 
   useEffect(() => { if (open) setActiveIdx(-1); }, [open, filter]);
@@ -157,6 +178,7 @@ export function PersonSelect({ value, onChange, style = {}, squad }) {
   return (
     <div ref={ref} style={{ position: "relative", display: "inline-block", ...style }} onKeyDown={handleKeyDown}>
       <button
+        ref={btnRef}
         type="button" role="combobox" aria-expanded={open} aria-haspopup="listbox"
         aria-label={value ? `Persona: ${value}` : "Seleccionar persona"}
         onClick={() => { setOpen(!open); setFilter(""); }}
@@ -173,8 +195,12 @@ export function PersonSelect({ value, onChange, style = {}, squad }) {
           <path d="M3 4.75L6 7.75L9 4.75" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: C.tx3 }} />
         </svg>
       </button>
-      {open && (
-        <div ref={listRef} role="listbox" aria-label="Lista de personas" style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 100, background: C.bg2, border: `1px solid ${C.border}`, borderRadius: R.sm, boxShadow: C.shadowLg, marginTop: 4, maxHeight: 260, overflowY: "auto", minWidth: 190, padding: "0 0 4px", animation: "fadeIn .12s ease both" }}>
+      {open && typeof document !== "undefined" && createPortal(
+        // Por portal y con posición medida contra la ventana. Antes era un panel
+        // `position:absolute` dentro de la fila: en las filas de abajo de la
+        // lista se salía por el borde inferior, y en los contenedores con
+        // overflow quedaba recortado.
+        <div ref={listRef} role="listbox" aria-label="Lista de personas" onKeyDown={handleKeyDown} style={panelStyle(pos, { zIndex: 100, background: C.bg2, border: `1px solid ${C.border}`, borderRadius: R.sm, boxShadow: C.shadowLg, maxHeight: Math.min(260, pos?.maxHeight ?? 260), overflowY: "auto", minWidth: 190, padding: "0 0 4px", animation: "fadeIn .12s ease both" })}>
           {/* El buscador queda fijo arriba: con 24 personas la lista scrollea y
               antes el campo se iba con el scroll. */}
           <div style={{ position: "sticky", top: 0, zIndex: 2, background: C.bg2, padding: "6px 6px", borderBottom: `1px solid ${C.bg3}`, marginBottom: 2 }}>
@@ -212,7 +238,8 @@ export function PersonSelect({ value, onChange, style = {}, squad }) {
           {filteredGroups.length === 0 && (
             <div style={{ padding: "14px 10px", fontSize: 12, color: C.tx3, textAlign: "center" }}>Sin resultados</div>
           )}
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );
