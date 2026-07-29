@@ -75,6 +75,61 @@ export function isOverdue(it) {
 
 export function isActive(ph) { return ["🚧 Sprint", "👀 Review", "⚙️ Modificación"].includes(ph); }
 
+// Columnas de Monday por nivel. Las subtareas NO comparten columnas con su tarea
+// padre: tienen su propia fase y su propio timeline, con otros ids.
+export const WORK_COLS = {
+  task: { phase: "color_mkz09na",  timeline: "timerange_mkzcqv0j" },
+  sub:  { phase: "color_mkzjvp66", timeline: "timerange_mkzx7r55" },
+};
+
+// isOverdueWork — vencido, sobre un item ya normalizado por getSquadWorkItems.
+// Equivale a isOverdue() pero sirve para los dos niveles; isOverdue() lee directo
+// las columnas de tarea y por eso no aplica a subtareas.
+export function isOverdueWork(w) {
+  if (w.phase === "✅ Done" || w.phase === "🚫 Detenido") return false;
+  const tl = parseTL(w.timeline);
+  return tl.end ? tl.end < TODAY : false;
+}
+
+// getSquadWorkItems — trabajo activo de un squad: subtareas primero, luego tareas.
+//
+// Las subtareas no llevan columna de squad en Monday, así que heredan la de su
+// tarea padre. Se evalúan por su PROPIA fase: una subtarea en Sprint aparece
+// aunque su tarea padre siga en Backlog, que es justo el caso que antes se perdía.
+export function getSquadWorkItems(items, squadName) {
+  const subs = [], tasks = [];
+
+  for (const it of items || []) {
+    if (normalizeSquad(it.column_values?.color_mkz0s203) !== squadName) continue;
+    const cv = it.column_values || {};
+
+    for (const s of it.subitems || []) {
+      const scv = s.column_values || {};
+      const phase = scv[WORK_COLS.sub.phase];
+      if (!isActive(phase)) continue;
+      subs.push({
+        id: `sub-${s.id}`, name: s.name, kind: "sub", phase,
+        timeline: scv[WORK_COLS.sub.timeline] || null,
+        person: scv.person || null,
+        parentName: it.name,
+      });
+    }
+
+    const phase = cv[WORK_COLS.task.phase];
+    if (!isActive(phase)) continue;
+    const allSubs = it.subitems || [];
+    tasks.push({
+      id: `task-${it.id}`, name: it.name, kind: "task", phase,
+      timeline: cv[WORK_COLS.task.timeline] || null,
+      person: cv.person || null,
+      subsTotal: allSubs.length,
+      subsDone: allSubs.filter((s) => s.column_values?.[WORK_COLS.sub.phase] === "✅ Done").length,
+    });
+  }
+
+  return [...subs, ...tasks];
+}
+
 export function getWeekBounds() {
   const now = new Date(TODAY_STR + 'T12:00:00');
   const day = now.getDay();

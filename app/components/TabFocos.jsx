@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 // MONITOREO DE TAMANIO: Este archivo debe mantenerse por debajo de 400 lineas.
 // Si crece mas, extraer la seccion Cross-Squad a components/CrossSquadView.jsx.
 import { SQUADS, PHASES, TODAY } from '../lib/constants'
-import { parseTL, daysDiff, shortName, normalizeSquad, isActive, isOverdue, overlapsThisWeek, normalizeFocos, normalizePersonName } from '../lib/utils'
+import { parseTL, daysDiff, shortName, overlapsThisWeek, normalizeFocos, normalizePersonName, getSquadWorkItems, isOverdueWork } from '../lib/utils'
 import { C, TS, R, F } from '../lib/tokens'
 import { Chip, Card, RepeatableItems } from './ui'
 
@@ -23,7 +23,9 @@ const TabFocos = React.memo(function TabFocos({ items, wd, setWd, save, activeSq
   });
   const crossCount = allBlockers.length + allNecesitos.length;
 
-  const sqItems = sq ? items.filter((i) => normalizeSquad(i.column_values?.color_mkz0s203) === sq.name && isActive(i.column_values?.color_mkz09na)) : [];
+  // Subtareas primero, luego tareas (ver getSquadWorkItems).
+  const sqItems = sq ? getSquadWorkItems(items, sq.name) : [];
+  const nSubs = sqItems.filter((w) => w.kind === "sub").length;
   const entries = normalizeFocos(focos[activeSquad]);
   const [showForm, setShowForm] = useState(!entries.length); // mostrar form si no hay entries
 
@@ -161,18 +163,35 @@ const TabFocos = React.memo(function TabFocos({ items, wd, setWd, save, activeSq
               </div>
             )}
           </Card>
-          <div style={{ fontSize: 11, fontWeight: 700, color: C.tx3, marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>Items activos · {sqItems.length}</div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.tx3, marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>
+            Items activos · {sqItems.length}
+            {sqItems.length > 0 && <span style={{ fontWeight: 500, letterSpacing: 0, textTransform: "none", marginLeft: 6 }}>({nSubs} subtareas · {sqItems.length - nSubs} tareas)</span>}
+          </div>
           <div style={{ maxHeight: 340, overflowY: "auto" }}>
-            {sqItems.map((it) => {
-              const tl = parseTL(it.column_values?.timerange_mkzcqv0j), od = isOverdue(it), tw = overlapsThisWeek(it.column_values?.timerange_mkzcqv0j);
-              const subs = it.subitems || [], subsDone = subs.filter((s) => s.column_values?.color_mkzjvp66 === "✅ Done").length;
+            {sqItems.map((it, idx) => {
+              const isSub = it.kind === "sub";
+              // Encabezado al empezar cada bloque, solo si hay de los dos tipos.
+              const showHeader = nSubs > 0 && nSubs < sqItems.length && (idx === 0 || idx === nSubs);
+              const tl = parseTL(it.timeline), od = isOverdueWork(it), tw = overlapsThisWeek(it.timeline);
               return (
-                <div key={it.id} style={{ display: "flex", gap: 5, alignItems: "center", padding: "5px 8px", borderBottom: "1px solid var(--bg3)", fontSize: 12, background: od ? "rgba(255,59,48,.06)" : tw ? "rgba(0,122,255,.04)" : "transparent", borderLeft: tw ? "3px solid var(--blue)" : od ? "3px solid var(--red)" : "3px solid transparent" }}>
-                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: PHASES[it.column_values?.color_mkz09na] || "#555", flexShrink: 0 }} />
-                  <span style={{ flex: 1, color: C.tx2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.name}</span>
-                  {subs.length > 0 && <div style={{ display: "flex", alignItems: "center", gap: 3, flexShrink: 0 }}><div style={{ width: 32, height: 4, borderRadius: 2, background: C.bg4, overflow: "hidden" }}><div style={{ width: `${(subsDone / subs.length) * 100}%`, height: "100%", background: subsDone === subs.length ? C.green : C.blue, borderRadius: 2 }} /></div><span style={{ fontFamily: F.mono, fontSize: 9, color: C.tx3 }}>{subsDone}/{subs.length}</span></div>}
+                <React.Fragment key={it.id}>
+                {showHeader && (
+                  <div style={{ fontSize: 9, fontWeight: 700, color: C.tx3, letterSpacing: 1, textTransform: "uppercase", padding: idx === 0 ? "2px 8px 4px" : "10px 8px 4px" }}>
+                    {isSub ? "Subtareas" : "Tareas"}
+                  </div>
+                )}
+                <div style={{ display: "flex", gap: 5, alignItems: "center", padding: "5px 8px", paddingLeft: isSub ? 20 : 8, borderBottom: "1px solid var(--bg3)", fontSize: 12, background: od ? "rgba(255,59,48,.06)" : tw ? "rgba(0,122,255,.04)" : "transparent", borderLeft: tw ? "3px solid var(--blue)" : od ? "3px solid var(--red)" : "3px solid transparent" }}>
+                  {/* Subtarea: sangría + glifo. Tarea: el punto de fase de siempre. */}
+                  {isSub
+                    ? <span style={{ color: C.tx3, fontSize: 10, flexShrink: 0, lineHeight: 1 }} title="Subtarea">↳</span>
+                    : <span style={{ width: 6, height: 6, borderRadius: "50%", background: PHASES[it.phase] || "#555", flexShrink: 0 }} />}
+                  <span style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
+                    <span style={{ color: C.tx2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block" }}>{it.name}</span>
+                    {isSub && <span style={{ color: C.tx3, fontSize: 9, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block" }}>{it.parentName}</span>}
+                  </span>
+                  {!isSub && it.subsTotal > 0 && <div style={{ display: "flex", alignItems: "center", gap: 3, flexShrink: 0 }}><div style={{ width: 32, height: 4, borderRadius: 2, background: C.bg4, overflow: "hidden" }}><div style={{ width: `${(it.subsDone / it.subsTotal) * 100}%`, height: "100%", background: it.subsDone === it.subsTotal ? C.green : C.blue, borderRadius: 2 }} /></div><span style={{ fontFamily: F.mono, fontSize: 9, color: C.tx3 }}>{it.subsDone}/{it.subsTotal}</span></div>}
                   {od && <span style={{ fontFamily: F.mono, color: C.red, fontWeight: 700, fontSize: 10 }}>-{tl.end ? daysDiff(TODAY, tl.end) : "?"}d</span>}
-                  <span style={{ color: C.tx3, fontSize: 10 }}>{shortName(it.column_values?.person)}</span>
+                  <span style={{ color: C.tx3, fontSize: 10 }}>{shortName(it.person)}</span>
                   {tl.end && <span style={{ fontFamily: F.mono, color: od ? C.red : C.tx3, fontWeight: od ? 700 : 400, fontSize: 10 }}>{tl.end.toLocaleDateString("es-MX", { day: "2-digit", month: "short" })}</span>}
                   <button
                     onClick={() => {
@@ -183,7 +202,7 @@ const TabFocos = React.memo(function TabFocos({ items, wd, setWd, save, activeSq
                         // (siempre un campo vacio al final, ya no hay boton "+ agregar").
                         focosList: [
                           ...(prev.focosList || []).filter(x => x.text?.trim()),
-                          { text: it.name, quien: normalizePersonName(it.column_values?.person) || "" },
+                          { text: it.name, quien: normalizePersonName(it.person) || "" },
                           { text: "" },
                         ]
                       }));
@@ -196,6 +215,7 @@ const TabFocos = React.memo(function TabFocos({ items, wd, setWd, save, activeSq
                     → Foco
                   </button>
                 </div>
+                </React.Fragment>
               );
             })}
           </div>
