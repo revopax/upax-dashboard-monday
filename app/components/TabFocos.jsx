@@ -1,5 +1,5 @@
 'use client'
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
 // components/TabFocos.jsx
 // MONITOREO DE TAMANIO: Este archivo debe mantenerse por debajo de 400 lineas.
 // Si crece mas, extraer la seccion Cross-Squad a components/CrossSquadView.jsx.
@@ -23,8 +23,10 @@ const TabFocos = React.memo(function TabFocos({ items, wd, setWd, save, activeSq
   });
   const crossCount = allBlockers.length + allNecesitos.length;
 
-  // Subtareas primero, luego tareas (ver getSquadWorkItems).
-  const sqItems = sq ? getSquadWorkItems(items, sq.name) : [];
+  // Subtareas primero, luego tareas (ver getSquadWorkItems). Memoizado porque el
+  // recorrido pasa por todos los items y sus subitems, y este componente se
+  // re-renderiza en cada tecla del formulario de focos.
+  const sqItems = useMemo(() => (sq ? getSquadWorkItems(items, sq.name) : []), [items, sq?.name]);
   const nSubs = sqItems.filter((w) => w.kind === "sub").length;
   const entries = normalizeFocos(focos[activeSquad]);
   const [showForm, setShowForm] = useState(!entries.length); // mostrar form si no hay entries

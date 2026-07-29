@@ -91,22 +91,57 @@ export function isOverdueWork(w) {
   return tl.end ? tl.end < TODAY : false;
 }
 
+// ownerSquads — squads de los responsables de un item. La columna `person` de
+// Monday puede traer varias personas separadas por coma, así que se parte y se
+// normaliza cada nombre por separado (normalizePersonName tolera variantes de
+// acentuación y nombres parciales).
+export function ownerSquads(personText) {
+  if (!personText) return [];
+  const squads = new Set();
+  for (const raw of String(personText).split(/[,;]/)) {
+    const name = raw.trim();
+    if (!name) continue;
+    const persona = PERSONAS.find((p) => p.name === normalizePersonName(name));
+    if (persona) squads.add(persona.squad);
+  }
+  return [...squads];
+}
+
+// belongsToSquad — ¿este trabajo es de este squad?
+//
+// Manda el RESPONSABLE, no la etiqueta de squad del board. Dos razones:
+//   1. Renombrar la etiqueta en Monday rompe el histórico, así que el dashboard
+//      no puede depender de cómo esté escrita.
+//   2. Un proyecto multi-squad reparte cada subtarea al equipo de quien la lleva,
+//      en vez de mandar el proyecto entero a un solo squad.
+// Si el item tiene varios responsables, aparece en el squad de cada uno.
+//
+// Sin responsable reconocible se cae a la etiqueta del item, para no hacer
+// desaparecer trabajo sin asignar. Las subtareas usan la etiqueta de su tarea
+// padre, porque en Monday no tienen columna de squad propia.
+function belongsToSquad(personText, fallbackLabel, squadName) {
+  const squads = ownerSquads(personText);
+  if (squads.length) return squads.includes(squadName);
+  return normalizeSquad(fallbackLabel) === squadName;
+}
+
 // getSquadWorkItems — trabajo activo de un squad: subtareas primero, luego tareas.
 //
-// Las subtareas no llevan columna de squad en Monday, así que heredan la de su
-// tarea padre. Se evalúan por su PROPIA fase: una subtarea en Sprint aparece
-// aunque su tarea padre siga en Backlog, que es justo el caso que antes se perdía.
+// Cada nivel se evalúa por su PROPIA fase y su PROPIO responsable: una subtarea en
+// Sprint aparece aunque su tarea padre siga en Backlog, y va al squad de quien la
+// lleva aunque el proyecto esté etiquetado con otro.
 export function getSquadWorkItems(items, squadName) {
   const subs = [], tasks = [];
 
   for (const it of items || []) {
-    if (normalizeSquad(it.column_values?.color_mkz0s203) !== squadName) continue;
     const cv = it.column_values || {};
+    const label = cv.color_mkz0s203;
 
     for (const s of it.subitems || []) {
       const scv = s.column_values || {};
       const phase = scv[WORK_COLS.sub.phase];
       if (!isActive(phase)) continue;
+      if (!belongsToSquad(scv.person, label, squadName)) continue;
       subs.push({
         id: `sub-${s.id}`, name: s.name, kind: "sub", phase,
         timeline: scv[WORK_COLS.sub.timeline] || null,
@@ -117,6 +152,7 @@ export function getSquadWorkItems(items, squadName) {
 
     const phase = cv[WORK_COLS.task.phase];
     if (!isActive(phase)) continue;
+    if (!belongsToSquad(cv.person, label, squadName)) continue;
     const allSubs = it.subitems || [];
     tasks.push({
       id: `task-${it.id}`, name: it.name, kind: "task", phase,

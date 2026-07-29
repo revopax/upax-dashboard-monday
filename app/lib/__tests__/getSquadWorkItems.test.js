@@ -2,13 +2,19 @@ import { describe, it, expect } from 'vitest'
 import { getSquadWorkItems, isOverdueWork } from '../utils'
 
 // Columnas reales de Monday: la tarea y la subtarea NO comparten las suyas.
+//
+// `person` usa `in` y no `??` a propósito: con ?? un `person: null` explícito
+// caería al default y el test de "sin responsable" pasaría por la razón
+// equivocada, que es justo lo que pasó al escribirlos.
+const opt = (opts, key, fallback) => (key in opts ? opts[key] : fallback)
+
 const task = (id, name, phase, opts = {}) => ({
   id, name,
   column_values: {
-    color_mkz0s203: opts.squad ?? 'RevOps & Analytics',
+    color_mkz0s203: opt(opts, 'squad', 'RevOps & Analytics'),
     color_mkz09na: phase,
-    timerange_mkzcqv0j: opts.timeline ?? null,
-    person: opts.person ?? 'César Mejía',
+    timerange_mkzcqv0j: opt(opts, 'timeline', null),
+    person: opt(opts, 'person', 'César Mejía'),
   },
   subitems: opts.subitems ?? [],
 })
@@ -17,8 +23,8 @@ const sub = (id, name, phase, opts = {}) => ({
   id, name,
   column_values: {
     color_mkzjvp66: phase,
-    timerange_mkzx7r55: opts.timeline ?? null,
-    person: opts.person ?? 'Diego Luna',
+    timerange_mkzx7r55: opt(opts, 'timeline', null),
+    person: opt(opts, 'person', 'Diego Luna'),
   },
 })
 
@@ -50,13 +56,61 @@ describe('getSquadWorkItems', () => {
     expect(out.filter((w) => w.kind === 'sub').map((w) => w.name)).toEqual(['Viva'])
   })
 
-  it('las subtareas heredan el squad del padre y respetan el filtro', () => {
+  // El criterio es el RESPONSABLE, no la etiqueta de squad del board: renombrar la
+  // etiqueta en Monday rompe el histórico, así que no se puede depender de ella.
+  it('manda el owner sobre la etiqueta de squad del item', () => {
     const items = [
-      task('1', 'Ajeno', '🚧 Sprint', { squad: 'Portafolio y Ecosistema', subitems: [sub('1a', 'Sub ajena', '🚧 Sprint')] }),
-      task('2', 'Propio', '🚧 Sprint', { subitems: [sub('2a', 'Sub propia', '🚧 Sprint')] }),
+      // Etiquetado Portafolio pero lo lleva César, que es de RevOps.
+      task('1', 'Mal etiquetado', '🚧 Sprint', { squad: 'Portafolio y Ecosistema', person: 'César Mejía' }),
     ]
-    const out = getSquadWorkItems(items, 'RevOps & Analytics')
-    expect(out.map((w) => w.name)).toEqual(['Sub propia', 'Propio'])
+    expect(getSquadWorkItems(items, 'RevOps & Analytics').map((w) => w.name)).toEqual(['Mal etiquetado'])
+    expect(getSquadWorkItems(items, 'Portafolio y Ecosistema')).toEqual([])
+  })
+
+  // El caso que motivó el cambio: un proyecto que toca a varios squads reparte
+  // cada subtarea al equipo de quien la lleva.
+  it('reparte las subtareas de un proyecto multi-squad por responsable', () => {
+    const items = [task('1', 'Proyecto cross', '⏳Backlog', {
+      person: 'César Mejía',
+      subitems: [
+        sub('1a', 'Parte RevOps', '🚧 Sprint', { person: 'Diego Luna' }),
+        sub('1b', 'Parte Portafolio', '🚧 Sprint', { person: 'Tairi Medina' }),
+        sub('1c', 'Parte Web', '🚧 Sprint', { person: 'Diana Cruz' }),
+      ],
+    })]
+    expect(getSquadWorkItems(items, 'RevOps & Analytics').map((w) => w.name)).toEqual(['Parte RevOps'])
+    expect(getSquadWorkItems(items, 'Portafolio y Ecosistema').map((w) => w.name)).toEqual(['Parte Portafolio'])
+    expect(getSquadWorkItems(items, 'Web y contenidos').map((w) => w.name)).toEqual(['Parte Web'])
+  })
+
+  it('un item con varios responsables aparece en el squad de cada uno', () => {
+    const items = [task('1', 'Compartido', '🚧 Sprint', { person: 'César Mejía, Tairi Medina' })]
+    expect(getSquadWorkItems(items, 'RevOps & Analytics')).toHaveLength(1)
+    expect(getSquadWorkItems(items, 'Portafolio y Ecosistema')).toHaveLength(1)
+  })
+
+  it('tolera variantes de escritura del nombre en Monday', () => {
+    const items = [task('1', 'Con acento raro', '🚧 Sprint', { person: 'Cesar Mejia' })]
+    expect(getSquadWorkItems(items, 'RevOps & Analytics')).toHaveLength(1)
+  })
+
+  // Sin owner reconocible no se puede deducir el squad, y hacer desaparecer el
+  // trabajo sería peor que usar la etiqueta.
+  it('sin responsable reconocible cae a la etiqueta del item', () => {
+    const sinDuenio = [task('1', 'Huérfano', '🚧 Sprint', { person: null })]
+    expect(getSquadWorkItems(sinDuenio, 'RevOps & Analytics')).toHaveLength(1)
+
+    const externo = [task('2', 'De un externo', '🚧 Sprint', { person: 'Alguien Externo', squad: 'Outbound y Pipeline' })]
+    expect(getSquadWorkItems(externo, 'Outbound y Pipeline')).toHaveLength(1)
+    expect(getSquadWorkItems(externo, 'RevOps & Analytics')).toEqual([])
+  })
+
+  it('una subtarea sin responsable cae a la etiqueta de su tarea padre', () => {
+    const items = [task('1', 'Padre', '⏳Backlog', {
+      squad: 'Outbound y Pipeline',
+      subitems: [sub('1a', 'Sub sin dueño', '🚧 Sprint', { person: null })],
+    })]
+    expect(getSquadWorkItems(items, 'Outbound y Pipeline').map((w) => w.name)).toEqual(['Sub sin dueño'])
   })
 
   it('la tarea trae el avance de TODAS sus subtareas, no solo las activas', () => {
