@@ -2,12 +2,16 @@
 import React, { useState, useEffect } from 'react'
 // components/TabPanorama.jsx — Squads breakdown + Alertas completas
 import { SQUADS, TODAY } from '../lib/constants'
-import { parseTL, daysDiff, shortName, normalizeSquad, squadOfTask } from '../lib/utils'
+import { parseTL, daysDiff, shortName, normalizeSquad, squadOfTask, DONE_PHASES } from '../lib/utils'
 import { C, TS, F } from '../lib/tokens'
 import { Bar, Card, Chip } from './ui'
 
 // Segmentos de la barra de fases. Compartido por tareas y subtareas: las dos usan
 // el mismo vocabulario de fases, solo cambia la columna de la que salen.
+//
+// Es la definición de "trabajo abierto" de esta vista: todo lo que no está
+// terminado. El contador del encabezado se DERIVA de aquí (ver totalSegs) para que
+// no pueda volver a decir un número distinto del que pinta la barra.
 const PHASE_SEGS = (p = {}) => [
   { l: "Spr", v: p["🚧 Sprint"] || 0, c: C.yellow, ph: "🚧 Sprint" },
   { l: "Rev", v: p["👀 Review"] || 0, c: C.cyan, ph: "👀 Review" },
@@ -15,6 +19,12 @@ const PHASE_SEGS = (p = {}) => [
   { l: "Det", v: p["🚫 Detenido"] || 0, c: C.red, ph: "🚫 Detenido" },
   { l: "BL", v: p["⏳Backlog"] || 0, c: C.bg4, ph: "⏳Backlog" },
 ]
+
+const totalSegs = (segs) => segs.reduce((s, x) => s + x.v, 0)
+
+// Terminadas, para el tooltip del contador: el encabezado dice el trabajo abierto,
+// así que hace falta poder ver de un hover cuánto de lo del squad ya cerró.
+const doneOf = (p = {}) => DONE_PHASES.reduce((s, ph) => s + (p[ph] || 0), 0)
 
 const TabPanorama = React.memo(function TabPanorama({ analysis: an, items, onDrillDown }) {
   const [sec, setSec] = useState("squads");
@@ -61,9 +71,15 @@ const TabPanorama = React.memo(function TabPanorama({ analysis: an, items, onDri
         );
         return SQUADS.map((sq) => {
         const d = an.bySquad[sq.name]; if (!d) return null;
-        const activos = (p) => (p?.["🚧 Sprint"] || 0) + (p?.["👀 Review"] || 0) + (p?.["⚙️ Modificación"] || 0);
-        const act = activos(d.phases);
-        const actSub = activos(d.subPhases);
+        // El contador sale de los mismos segmentos que pinta la barra. Antes contaba
+        // solo Sprint/Review/Mod mientras la barra incluía además Detenido y Backlog,
+        // así que el encabezado decía "19 tareas" arriba de una barra que sumaba 55.
+        const taskSegs = PHASE_SEGS(d.phases);
+        const subSegs = PHASE_SEGS(d.subPhases);
+        const act = totalSegs(taskSegs);
+        const actSub = totalSegs(subSegs);
+        const doneAct = doneOf(d.phases);
+        const doneSub = doneOf(d.subPhases);
         // Mismo criterio que el resto del análisis: se atribuye por responsable.
         const sqOverdue = (an.overdue || []).filter((it) => squadOfTask(it) === sq.name);
         const sqNoCrono = (an.noCrono || []).filter((it) => squadOfTask(it) === sq.name);
@@ -84,7 +100,10 @@ const TabPanorama = React.memo(function TabPanorama({ analysis: an, items, onDri
                 <span style={{ fontSize: 14, fontWeight: 700, color: sq.color }}>{sq.name} <span style={{ fontWeight: 500, color: C.tx3, fontSize: 12 }}>· {sq.lead}</span></span>
               </span>
               <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
-                <span style={{ fontSize: 12, color: C.tx3 }}>{act} tareas · {actSub} subtareas</span>
+                <span
+                  style={{ fontSize: 12, color: C.tx3 }}
+                  title={`Trabajo abierto: ${act} tareas y ${actSub} subtareas.\nTerminadas: ${doneAct} tareas y ${doneSub} subtareas.\nTotal del squad: ${act + doneAct} tareas y ${actSub + doneSub} subtareas.`}
+                >{act} tareas · {actSub} subtareas</span>
                 {sqOverdue.length > 0 && <span style={{ fontSize: 11, fontWeight: 700, color: C.red }}>🔴 {sqOverdue.length} venc.</span>}
                 {(d.phases["🚫 Detenido"] || 0) > 0 && <span style={{ fontSize: 11, fontWeight: 700, color: C.red }}>🚫 {d.phases["🚫 Detenido"]} det.</span>}
               </div>
@@ -93,19 +112,25 @@ const TabPanorama = React.memo(function TabPanorama({ analysis: an, items, onDri
               {/* Dos barras separadas, tareas y subtareas. No se fusionan a
                   propósito: son niveles distintos de trabajo y mezclarlos cambiaría
                   el significado de los números que ya se venían leyendo. */}
-              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
-                <span style={{ fontSize: 9, fontWeight: 700, color: C.tx3, letterSpacing: 1, textTransform: "uppercase", minWidth: 60 }}>Tareas</span>
-                <span style={{ flex: 1 }}>
-                  <Bar h={14} segs={PHASE_SEGS(d.phases)} onSegmentClick={onDrillDown ? (seg) => {
-                    const filtered = items.filter(it => squadOfTask(it) === sq.name && it.column_values?.color_mkz09na === seg.ph);
-                    onDrillDown({ phase: `${sq.name} — Tareas ${seg.l}`, items: filtered });
-                  } : undefined} />
-                </span>
-              </div>
-              {d.subTotal > 0 && (
+              {/* Cada fila se condiciona a su PROPIO total: `Bar` devuelve null cuando
+                  todos los segmentos son cero, y con la condición vieja (subTotal > 0,
+                  que contaba también las terminadas) Político-Electoral pintaba la
+                  etiqueta SUBTAREAS sin barra al lado, con sus 6 subtareas en Done. */}
+              {act > 0 && (
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
+                  <span style={{ fontSize: 9, fontWeight: 700, color: C.tx3, letterSpacing: 1, textTransform: "uppercase", minWidth: 60 }}>Tareas</span>
+                  <span style={{ flex: 1 }}>
+                    <Bar h={14} segs={taskSegs} onSegmentClick={onDrillDown ? (seg) => {
+                      const filtered = items.filter(it => squadOfTask(it) === sq.name && it.column_values?.color_mkz09na === seg.ph);
+                      onDrillDown({ phase: `${sq.name} — Tareas ${seg.l}`, items: filtered });
+                    } : undefined} />
+                  </span>
+                </div>
+              )}
+              {actSub > 0 && (
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                   <span style={{ fontSize: 9, fontWeight: 700, color: C.tx3, letterSpacing: 1, textTransform: "uppercase", minWidth: 60 }}>Subtareas</span>
-                  <span style={{ flex: 1 }}><Bar h={14} segs={PHASE_SEGS(d.subPhases)} /></span>
+                  <span style={{ flex: 1 }}><Bar h={14} segs={subSegs} /></span>
                 </div>
               )}
               {sqOverdue.length > 0 && (
@@ -199,4 +224,6 @@ const TabPanorama = React.memo(function TabPanorama({ analysis: an, items, onDri
   );
 });
 
-export { TabPanorama }
+// PHASE_SEGS/totalSegs/doneOf se exportan para poder testear que el contador del
+// encabezado y la barra siguen midiendo lo mismo (ver panoramaCounts.test.js).
+export { TabPanorama, PHASE_SEGS, totalSegs, doneOf }

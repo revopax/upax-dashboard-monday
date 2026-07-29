@@ -11,6 +11,7 @@ import { createMondayItem } from '../lib/api'
 import { generateMinuta } from '../lib/minuta'
 import { C, TS, R, F } from '../lib/tokens'
 import { Card, PersonSelect } from './ui'
+import { DateField } from './DateField'
 
 const TabCompromisos = React.memo(function TabCompromisos({ wd, setWd, save, analysis, onCopy, gddData }) {
   const comps = wd.compromisos || [], synced = wd.synced || [];
@@ -136,7 +137,7 @@ const TabCompromisos = React.memo(function TabCompromisos({ wd, setWd, save, ana
                 </div>
                 <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", paddingLeft: 30 }}>
                   <PersonSelect value={c.quien} onChange={updateQuien} style={{ flex: 1, minWidth: 100 }} />
-                  <input type="date" value={c.cuando} onChange={updateCuando} style={{ background: C.bg2, border: `1px solid ${C.bg4}`, borderRadius: R.sm, padding: "3px 4px", fontSize: 10, color: C.tx, outline: "none" }} />
+                  <DateField value={c.cuando} onChange={updateCuando} label="Fecha del compromiso" />
                   <span style={{ fontFamily: F.mono, fontSize: 11, fontWeight: 600, color: (c.pct || 0) >= 100 ? C.green : (c.pct || 0) >= 50 ? C.yellow : C.tx3, cursor: "pointer" }} onClick={bumpPct}>{c.pct || 0}%</span>
                   {syncBtn}
                 </div>
@@ -151,7 +152,7 @@ const TabCompromisos = React.memo(function TabCompromisos({ wd, setWd, save, ana
                   {deleteBtn}
                 </div>
                 <PersonSelect value={c.quien} onChange={updateQuien} />
-                <input type="date" value={c.cuando} onChange={updateCuando} style={{ background: C.bg2, border: `1px solid ${C.bg4}`, borderRadius: R.sm, padding: "3px 4px", fontSize: 10, color: C.tx, outline: "none" }} />
+                <DateField value={c.cuando} onChange={updateCuando} label="Fecha del compromiso" />
                 <div style={{ textAlign: "center" }}>
                   <span style={{ fontFamily: F.mono, fontSize: 11, fontWeight: 600, color: (c.pct || 0) >= 100 ? C.green : (c.pct || 0) >= 50 ? C.yellow : C.tx3, cursor: "pointer" }} onClick={bumpPct}>{c.pct || 0}%</span>
                 </div>

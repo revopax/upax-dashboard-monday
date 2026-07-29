@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { PERSONAS } from '../lib/constants'
 import { PHASE_SHORT } from '../lib/utils'
 import { C, TS, R, F } from '../lib/tokens'
+import { DateField } from './DateField'
 
 export function Bar({ segs, h = 20, onSegmentClick }) {
   const t = segs.reduce((s, x) => s + x.v, 0); if (!t) return null;
@@ -132,17 +133,21 @@ export function PersonSelect({ value, onChange, style = {}, squad }) {
     setFilter("");
   };
 
+  // Las teclas que consume la lista abierta no deben llegar a los atajos globales
+  // de la weekly: ese handler solo se salta INPUT/TEXTAREA/SELECT, y el disparador
+  // de este combobox es un <button>. Sin esto, moverse por la lista con las
+  // flechas también avanzaba el bloque de la agenda.
   const handleKeyDown = (e) => {
-    if (e.key === "Escape") { setOpen(false); return; }
+    if (e.key === "Escape") { if (open) { e.stopPropagation(); setOpen(false); } return; }
     if (!open) return;
     if (e.key === "ArrowDown") {
-      e.preventDefault();
+      e.preventDefault(); e.stopPropagation();
       setActiveIdx(prev => Math.min(prev + 1, flatList.length - 1));
     } else if (e.key === "ArrowUp") {
-      e.preventDefault();
+      e.preventDefault(); e.stopPropagation();
       setActiveIdx(prev => Math.max(prev - 1, 0));
     } else if (e.key === "Enter" && activeIdx >= 0 && activeIdx < flatList.length) {
-      e.preventDefault();
+      e.preventDefault(); e.stopPropagation();
       select(flatList[activeIdx].name);
     }
   };
@@ -151,38 +156,61 @@ export function PersonSelect({ value, onChange, style = {}, squad }) {
 
   return (
     <div ref={ref} style={{ position: "relative", display: "inline-block", ...style }} onKeyDown={handleKeyDown}>
-      <button type="button" role="combobox" aria-expanded={open} aria-haspopup="listbox" aria-label={value ? `Persona: ${value}` : "Seleccionar persona"} onClick={() => { setOpen(!open); setFilter(""); }} style={{ background: C.bg2, border: "1px solid var(--bg4)", borderRadius: 8, padding: "5px 8px", fontSize: 13, fontFamily: F.sans, color: value ? C.tx : C.tx3, cursor: "pointer", textAlign: "left", width: "100%", minWidth: 120 }}>
-        {value || "Seleccionar..."}
-        <span aria-hidden="true" style={{ float: "right", fontSize: 10, color: C.tx3 }}>▼</span>
+      <button
+        type="button" role="combobox" aria-expanded={open} aria-haspopup="listbox"
+        aria-label={value ? `Persona: ${value}` : "Seleccionar persona"}
+        onClick={() => { setOpen(!open); setFilter(""); }}
+        className="ctl-btn"
+        // Flex en vez del `float:right` que tenía el chevron: con un nombre largo
+        // el texto se le metía debajo. Ahora el chevron es un item fijo y el
+        // nombre se recorta con puntos suspensivos.
+        style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 8px", fontSize: 13, textAlign: "left", width: "100%", minWidth: 120, minHeight: 28 }}
+      >
+        <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: value ? C.tx : C.tx3 }}>
+          {value || "Seleccionar..."}
+        </span>
+        <svg className="ctl-chevron" aria-hidden="true" width="12" height="12" viewBox="0 0 12 12" fill="none">
+          <path d="M3 4.75L6 7.75L9 4.75" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: C.tx3 }} />
+        </svg>
       </button>
       {open && (
-        <div ref={listRef} role="listbox" aria-label="Lista de personas" style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 100, background: C.bg2, border: "1px solid var(--bg4)", borderRadius: 8, boxShadow: C.shadow, marginTop: 2, maxHeight: 240, overflowY: "auto", minWidth: 180 }}>
-          <div style={{ padding: "4px 6px", borderBottom: "1px solid var(--bg4)" }}>
-            <input autoFocus type="text" value={filter} onChange={e => setFilter(e.target.value)} placeholder="Buscar..." aria-label="Filtrar personas" style={{ width: "100%", background: C.bg3, border: "none", borderRadius: 6, padding: "5px 8px", fontSize: 12, fontFamily: F.sans, color: C.tx, outline: "none" }} />
+        <div ref={listRef} role="listbox" aria-label="Lista de personas" style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 100, background: C.bg2, border: `1px solid ${C.border}`, borderRadius: R.sm, boxShadow: C.shadowLg, marginTop: 4, maxHeight: 260, overflowY: "auto", minWidth: 190, padding: "0 0 4px", animation: "fadeIn .12s ease both" }}>
+          {/* El buscador queda fijo arriba: con 24 personas la lista scrollea y
+              antes el campo se iba con el scroll. */}
+          <div style={{ position: "sticky", top: 0, zIndex: 2, background: C.bg2, padding: "6px 6px", borderBottom: `1px solid ${C.bg3}`, marginBottom: 2 }}>
+            <input autoFocus type="text" value={filter} onChange={e => setFilter(e.target.value)} placeholder="Buscar..." aria-label="Filtrar personas" style={{ width: "100%", background: C.bg3, border: "1px solid transparent", borderRadius: R.xs, padding: "5px 8px", fontSize: 12, fontFamily: F.sans, color: C.tx, outline: "none", boxSizing: "border-box" }}
+              onFocus={(e) => { e.target.style.borderColor = C.blue; e.target.style.background = C.bg2; }}
+              onBlur={(e) => { e.target.style.borderColor = "transparent"; e.target.style.background = C.bg3; }}
+            />
           </div>
           {value && (
-            <div role="option" aria-selected={false} onClick={() => select("")} style={{ padding: "6px 10px", fontSize: 12, color: C.tx3, cursor: "pointer", borderBottom: "1px solid var(--bg4)" }}>
-              Limpiar selección
+            <div role="option" aria-selected={false} onClick={() => select("")} onMouseEnter={() => setActiveIdx(-1)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 10px", fontSize: 12, color: C.tx3, cursor: "pointer", borderBottom: `1px solid ${C.bg3}`, marginBottom: 2 }}>
+              <span aria-hidden="true" style={{ fontSize: 11 }}>✕</span> Limpiar selección
             </div>
           )}
           {filteredGroups.map(g => (
             <div key={g} role="group" aria-label={g}>
-              <div style={{ padding: "4px 10px", fontSize: 10, fontWeight: 700, color: C.tx3, textTransform: "uppercase", letterSpacing: "0.05em", background: C.bg3 }}>{g}</div>
+              <div style={{ padding: "5px 10px 3px", fontSize: 9, fontWeight: 700, color: C.tx3, textTransform: "uppercase", letterSpacing: "0.08em" }}>{g}</div>
               {filtered.filter(p => p.squad === g).map(p => {
                 const idx = optIdx++;
                 const isActive = idx === activeIdx;
+                const isSel = p.name === value;
                 return (
-                <div key={p.name} role="option" aria-selected={p.name === value} data-idx={idx} onClick={() => select(p.name)} style={{ padding: "6px 10px", fontSize: 12, cursor: "pointer", background: isActive ? C.bg3 : p.name === value ? "rgba(0,122,255,.08)" : "transparent", color: p.name === value ? C.blue : C.tx, fontWeight: p.name === value ? 600 : 400, outline: isActive ? "2px solid var(--blue)" : "none", outlineOffset: -2 }}
-                  onMouseEnter={e => { e.currentTarget.style.background = C.bg3; setActiveIdx(idx); }}
-                  onMouseLeave={e => e.currentTarget.style.background = p.name === value ? "rgba(0,122,255,.08)" : "transparent"}>
-                  {p.name}
+                // El resaltado sale SOLO de activeIdx, sin tocar el DOM a mano:
+                // los onMouseEnter/Leave de antes escribían style.background por su
+                // cuenta y se peleaban con lo que React acababa de pintar.
+                <div key={p.name} role="option" aria-selected={isSel} data-idx={idx} onClick={() => select(p.name)}
+                  onMouseEnter={() => setActiveIdx(idx)}
+                  style={{ display: "flex", alignItems: "center", gap: 6, margin: "0 4px", padding: "6px 8px", borderRadius: R.xs, fontSize: 12, cursor: "pointer", background: isActive ? C.bg3 : "transparent", color: isSel ? C.blue : C.tx, fontWeight: isSel ? 600 : 400 }}>
+                  <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</span>
+                  {isSel && <span aria-hidden="true" style={{ fontSize: 11, color: C.blue, flexShrink: 0 }}>✓</span>}
                 </div>
                 );
               })}
             </div>
           ))}
           {filteredGroups.length === 0 && (
-            <div style={{ padding: "12px 10px", fontSize: 12, color: C.tx3, textAlign: "center" }}>Sin resultados</div>
+            <div style={{ padding: "14px 10px", fontSize: 12, color: C.tx3, textAlign: "center" }}>Sin resultados</div>
           )}
         </div>
       )}
@@ -318,7 +346,7 @@ export function SquadInputSection({ label, icon, field, placeholder, rows, draft
       {showMeta && (
         <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 4 }}>
           <PersonSelect value={draft[field + "_quien"] || ""} onChange={(e) => updateDraft(field + "_quien", e.target.value)} style={{ fontSize: 11, padding: "3px 6px" }} />
-          <input type="date" value={draft[field + "_cuando"] || ""} onChange={(e) => updateDraft(field + "_cuando", e.target.value)} style={{ background: C.bg, border: "1px solid var(--bg4)", borderRadius: 6, padding: "3px 6px", fontSize: 10, color: C.tx, outline: "none" }} />
+          <DateField value={draft[field + "_cuando"] || ""} onChange={(e) => updateDraft(field + "_cuando", e.target.value)} label={`Fecha de ${label || field}`} />
         </div>
       )}
     </div>
@@ -371,7 +399,7 @@ export function RepeatableItems({ icon, label, placeholder, items, onChange, wit
           {/* Owner del foco, acotado al squad para que solo salga su gente. */}
           {withOwner && <PersonSelect value={it.quien || ""} onChange={(e) => update(i, { quien: e.target.value })} squad={squad} style={{ flex: "0 0 auto", fontSize: 11, minWidth: 130 }} />}
           {withMeta && <PersonSelect value={it.quien || ""} onChange={(e) => update(i, { quien: e.target.value })} style={{ flex: "0 0 auto", fontSize: 11 }} />}
-          {withMeta && <input type="date" value={it.cuando || ""} onChange={(e) => update(i, { cuando: e.target.value })} style={{ background: C.bg, border: "1px solid var(--bg4)", borderRadius: 6, padding: "6px", fontSize: 10, color: C.tx, outline: "none" }} />}
+          {withMeta && <DateField value={it.cuando || ""} onChange={(e) => update(i, { cuando: e.target.value })} label={`Fecha de ${label}`} />}
           {list.length > 1 && <button type="button" onClick={() => remove(i)} aria-label="Quitar item" style={{ background: "none", border: "none", color: C.tx3, cursor: "pointer", fontSize: 14, padding: "0 4px", lineHeight: 1 }}>✕</button>}
         </div>
       ))}

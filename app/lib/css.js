@@ -24,7 +24,83 @@ body{background:var(--bg);font-family:var(--sans);color:var(--tx);-webkit-font-s
 .fade{animation:fadeIn .3s ease both}
 input[type=range]{-webkit-appearance:none;height:6px;border-radius:3px;background:var(--bg4);outline:none;cursor:pointer;width:100%}
 input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:#fff;border:2px solid var(--blue);box-shadow:0 1px 4px rgba(0,0,0,.15);cursor:pointer}
-select{-webkit-appearance:auto}
+
+/* ── Controles: desplegables y campos de fecha ──────────────────────────────
+   Un solo lenguaje visual para los tres (select nativo, PersonSelect y
+   DateField): mismo alto, mismo borde, mismo radio y la misma progresión
+   hover → focus. Por eso los componentes ya NO llevan borde/fondo/radio en su
+   style inline: un inline gana siempre sobre la hoja y volvería a desalinearlos
+   uno por uno.
+
+   El borde arranca en --bg4 (discreto: hay muchos controles juntos en filas
+   densas) y sube a --border al pasar el mouse, para que la definición aparezca
+   cuando se la busca y no todo el tiempo. */
+select,.ctl-btn{
+  -webkit-appearance:none;appearance:none;
+  background-color:var(--bg2);
+  border:1px solid var(--bg4);border-radius:var(--r-xs);
+  padding:4px 8px;min-height:26px;
+  font-family:var(--sans);font-size:var(--ts-sm);line-height:1;color:var(--tx);
+  cursor:pointer;outline:none;
+  transition:border-color .15s ease,box-shadow .15s ease,background-color .15s ease;
+}
+select:hover,.ctl-btn:hover:not(:disabled){border-color:var(--border);background-color:var(--bg)}
+/* El anillo reemplaza al outline genérico de :focus-visible (definido más abajo)
+   en estos controles: sigue habiendo indicador de foco, pero pegado a la forma
+   del control en vez de un rectángulo suelto.
+   El :not(:disabled) NO es decorativo: sube la especificidad a (0,2,1) para
+   ganarle a la regla select:focus-visible{outline:...}, que empata en (0,1,1) y
+   al ir después en la hoja se impondría, dejando outline Y anillo a la vez. */
+select:focus:not(:disabled),select:focus-visible:not(:disabled),
+.ctl-btn:focus-visible,.ctl-btn[aria-expanded="true"]{
+  outline:none;border-color:var(--blue);background-color:var(--bg2);
+  box-shadow:0 0 0 3px rgba(0,122,255,.16);
+}
+select:disabled,.ctl-btn:disabled{opacity:.5;cursor:default;background-color:var(--bg3)}
+.ctl-lg{font-size:var(--ts-base);padding:6px 10px;min-height:30px}
+.ctl-chevron{transition:transform .18s ease;flex-shrink:0}
+.ctl-btn[aria-expanded="true"] .ctl-chevron{transform:rotate(180deg)}
+
+/* Select: chevron propio, y sitio a la derecha para que no pise al texto. */
+select{
+  padding-right:26px;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none'%3E%3Cpath d='M3 4.75L6 7.75L9 4.75' stroke='%236E6E73' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 7px center;background-size:12px;
+}
+select:hover,select:focus{
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none'%3E%3Cpath d='M3 4.75L6 7.75L9 4.75' stroke='%231D1D1F' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+/* El menú desplegado lo dibuja el sistema operativo: en macOS ignora estas dos
+   reglas. Se dejan porque en Windows y Linux sí aplican. Es justamente por esto
+   que el calendario de fecha NO usa el nativo: no hay forma de estilizarlo. */
+select option{background:var(--bg2);color:var(--tx)}
+select option:checked{font-weight:600}
+
+/* ── Calendario de DateField ────────────────────────────────────────────────
+   El del navegador no se puede tocar (lo dibuja fuera de la página), así que el
+   panel es nuestro y estos son sus estados de hover/foco. */
+.cal-nav{
+  width:24px;height:24px;display:flex;align-items:center;justify-content:center;
+  background:none;border:none;border-radius:var(--r-xs);
+  color:var(--tx3);font-size:16px;line-height:1;cursor:pointer;
+  transition:background-color .12s ease,color .12s ease;
+}
+.cal-nav:hover{background:var(--bg3);color:var(--tx)}
+.cal-day{
+  height:28px;display:flex;align-items:center;justify-content:center;
+  border:none;border-radius:var(--r-xs);
+  font-family:var(--sans);font-size:var(--ts-sm);cursor:pointer;
+  transition:background-color .1s ease;
+}
+/* :not() para no tapar el azul del día seleccionado, que se pinta inline. */
+.cal-day:hover:not([aria-pressed="true"]){background-color:var(--bg3)}
+.cal-action{
+  background:none;border:none;padding:3px 6px;border-radius:var(--r-xs);
+  font-family:var(--sans);font-size:var(--ts-sm);font-weight:600;color:var(--blue);
+  cursor:pointer;transition:background-color .12s ease;
+}
+.cal-action:hover{background:var(--bg3)}
+
 ::-webkit-scrollbar{width:5px}
 ::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:3px}
 ::selection{background:rgba(0,122,255,.15)}

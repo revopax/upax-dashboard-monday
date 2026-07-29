@@ -7,8 +7,9 @@ import { SQUADS, PHASES, TODAY } from '../lib/constants'
 import { parseTL, daysDiff, shortName, overlapsThisWeek, normalizeFocos, normalizePersonName, getSquadWorkItems, isOverdueWork } from '../lib/utils'
 import { C, TS, R, F } from '../lib/tokens'
 import { Chip, Card, RepeatableItems } from './ui'
+import { OwnersHoverCard } from './OwnersHoverCard'
 
-const TabFocos = React.memo(function TabFocos({ items, wd, setWd, save, activeSquad, setActiveSquad }) {
+const TabFocos = React.memo(function TabFocos({ items, wd, setWd, save, activeSquad, setActiveSquad, refreshing = false }) {
   const focos = wd.focos || {};
   const isCross = activeSquad === "cross";
   const sq = isCross ? null : SQUADS.find((s) => s.id === activeSquad);
@@ -251,15 +252,16 @@ const TabFocos = React.memo(function TabFocos({ items, wd, setWd, save, activeSq
                   {!isSub && it.subsTotal > 0 && <div style={{ display: "flex", alignItems: "center", gap: 3, flexShrink: 0 }}><div style={{ width: 32, height: 4, borderRadius: 2, background: C.bg4, overflow: "hidden" }}><div style={{ width: `${(it.subsDone / it.subsTotal) * 100}%`, height: "100%", background: it.subsDone === it.subsTotal ? C.green : C.blue, borderRadius: 2 }} /></div><span style={{ fontFamily: F.mono, fontSize: 9, color: C.tx3 }}>{it.subsDone}/{it.subsTotal}</span></div>}
                   {od && <span style={{ fontFamily: F.mono, color: C.red, fontWeight: 700, fontSize: 10 }}>-{tl.end ? daysDiff(TODAY, tl.end) : "?"}d</span>}
                   {/* Con un solo responsable se muestra su nombre. Con varios se
-                      pone "Varios owners" y la lista completa va en el tooltip:
+                      pone "Varios owners" y la lista completa va en el card de hover:
                       pintar el primero del texto de Monday hacía parecer que la
                       lista estaba mal filtrada, porque podía ser de otro squad. */}
-                  <span
-                    style={{ color: C.tx3, fontSize: 10, flexShrink: 0, whiteSpace: "nowrap", fontStyle: it.allOwners?.length > 1 ? "italic" : "normal", cursor: it.allOwners?.length > 1 ? "help" : "inherit" }}
-                    title={it.allOwners?.length > 1 ? it.allOwners.join("\n") : (it.person || "")}
-                  >
-                    {it.allOwners?.length > 1 ? "Varios owners" : shortName(it.owners?.[0] || it.person)}
-                  </span>
+                  <OwnersHoverCard
+                    owners={it.allOwners}
+                    mine={it.owners}
+                    person={it.person}
+                    squadName={sq.name}
+                    loading={refreshing}
+                  />
                   {tl.end && <span style={{ fontFamily: F.mono, color: od ? C.red : C.tx3, fontWeight: od ? 700 : 400, fontSize: 10 }}>{tl.end.toLocaleDateString("es-MX", { day: "2-digit", month: "short" })}</span>}
                   <span style={{ color: enFocos ? C.green : C.blue, fontSize: 9, fontWeight: 600, flexShrink: 0, whiteSpace: "nowrap", minWidth: 52, textAlign: "right" }}>
                     {enFocos ? "✓ En focos" : "→ Foco"}

@@ -74,9 +74,18 @@ export function getMondayStr(dateStr) {
 
 export function daysDiff(a, b) { return Math.round((a - b) / 86400000); }
 
+// DONE_PHASES — fases que significan trabajo TERMINADO.
+//
+// "✅ Materiales listos" solo existe en la columna de fase de SUBTAREA y cierra
+// igual que Done. Como no estaba contemplada, esas 33 subtareas no aparecían en
+// ninguna vista (ni activas ni cerradas) y encima podían salir como vencidas,
+// porque la única excepción era el literal "✅ Done".
+export const DONE_PHASES = ["✅ Done", "✅ Materiales listos"];
+export function isDonePhase(ph) { return DONE_PHASES.includes(ph); }
+
 export function isOverdue(it) {
   const ph = it.column_values?.color_mkz09na;
-  if (ph === "✅ Done" || ph === "🚫 Detenido") return false;
+  if (isDonePhase(ph) || ph === "🚫 Detenido") return false;
   const tl = parseTL(it.column_values?.timerange_mkzcqv0j);
   return tl.end ? tl.end < TODAY : false;
 }
@@ -94,7 +103,7 @@ export const WORK_COLS = {
 // Equivale a isOverdue() pero sirve para los dos niveles; isOverdue() lee directo
 // las columnas de tarea y por eso no aplica a subtareas.
 export function isOverdueWork(w) {
-  if (w.phase === "✅ Done" || w.phase === "🚫 Detenido") return false;
+  if (isDonePhase(w.phase) || w.phase === "🚫 Detenido") return false;
   const tl = parseTL(w.timeline);
   return tl.end ? tl.end < TODAY : false;
 }
@@ -225,7 +234,7 @@ export function getSquadWorkItems(items, squadName) {
       person: cv.person || null,
       owners: own.owners, allOwners: own.allOwners,
       subsTotal: allSubs.length,
-      subsDone: allSubs.filter((s) => s.column_values?.[WORK_COLS.sub.phase] === "✅ Done").length,
+      subsDone: allSubs.filter((s) => isDonePhase(s.column_values?.[WORK_COLS.sub.phase])).length,
     });
   }
 
@@ -374,7 +383,7 @@ export function getPersonDetail(name, items) {
     const parentThisWeek = overlapsThisWeek(parentTimeline);
     (it.subitems || []).forEach((sub) => {
       const subPhase = sub.column_values?.color_mkzjvp66;
-      if (!matchesPerson(sub.column_values?.person) || subPhase === "✅ Done") return;
+      if (!matchesPerson(sub.column_values?.person) || isDonePhase(subPhase)) return;
       const subTimeline = sub.column_values?.timerange_mkzx7r55;
       const subThisWeek = subTimeline ? overlapsThisWeek(subTimeline) : false;
       const task = { name: sub.name, parentName: it.name, phase: subPhase || "🚧 Sprint" };

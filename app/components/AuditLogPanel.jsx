@@ -29,7 +29,7 @@ const AuditLogPanel = React.memo(function AuditLogPanel() {
           {todayCount > 0 && <span style={{ fontSize:TS.xs, fontWeight:700, background:C.blue, color:"#fff", borderRadius:10, padding:"1px 7px" }}>{todayCount} hoy</span>}
           <span style={{ fontSize:TS.sm, color:C.tx3 }}>{log.length} total</span>
         </div>
-        <select value={filter} onChange={(e) => setFilter(e.target.value)} style={{ background:C.bg2, border:`1px solid ${C.bg4}`, borderRadius:R.sm, padding:"3px 8px", fontSize:TS.sm, color:C.tx2, outline:"none", cursor:"pointer" }}>
+        <select value={filter} onChange={(e) => setFilter(e.target.value)} aria-label="Filtrar por tipo de acción">
           <option value="all">Todos los tipos</option>
           {types.map((t) => <option key={t} value={t}>{AUDIT_TYPE_ICONS[t] || "•"} {t}</option>)}
         </select>

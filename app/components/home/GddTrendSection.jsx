@@ -169,7 +169,7 @@ export const MqlChannelSection = React.memo(function MqlChannelSection({ mqlBrea
                 <select
                   value={mqlWeekIdx}
                   onChange={e => setMqlWeekIdx(Number(e.target.value))}
-                  style={{ fontSize: 10, padding: "3px 6px", borderRadius: 4, border: "1px solid var(--bg4)", background: C.bg2, color: C.tx2, cursor: "pointer", fontFamily: "inherit" }}
+                  aria-label="Semana del desglose de MQLs"
                 >
                   <option value={-1}>Esta semana</option>
                   {weeksWithBreakdown.map(w => (

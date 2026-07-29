@@ -729,7 +729,7 @@ export default function App() {
         {tab === "home"        && <ErrorBoundary name="Home"><TabHome analysis={an} items={items} elapsed={elapsed} onStart={startTimer} gddData={appGddData} mqlBreakdown={mqlBreakdown} mqlBreakdownPrev={mqlBreakdownPrev} gddTargets={gddTargets} gddHistory={gddHistory} setGddHistory={setGddHistory} gddLoading={gddLoading} /></ErrorBoundary>}
         {tab === "agenda"      && <ErrorBoundary name="Agenda"><TabAgenda wd={wd} setWd={setWd} save={saveFn} currentIdx={currentBlockIdx} blockTimes={blockTimes} onJumpToBlock={jumpToBlock} /></ErrorBoundary>}
         {tab === "panorama"    && <ErrorBoundary name="Panorama"><TabPanorama analysis={an} items={items} onDrillDown={setPhaseModal} /></ErrorBoundary>}
-        {tab === "focos"       && <ErrorBoundary name="Focos"><TabFocos items={items} wd={wd} setWd={setWd} save={saveFn} activeSquad={activeSquad} setActiveSquad={setActiveSquad} /></ErrorBoundary>}
+        {tab === "focos"       && <ErrorBoundary name="Focos"><TabFocos items={items} wd={wd} setWd={setWd} save={saveFn} activeSquad={activeSquad} setActiveSquad={setActiveSquad} refreshing={refreshing} /></ErrorBoundary>}
         {tab === "compromisos" && <ErrorBoundary name="Compromisos"><TabCompromisos wd={wd} setWd={setWd} save={saveFn} analysis={an} onCopy={handleCopy} gddData={appGddData} /></ErrorBoundary>}
         {tab === "minutas"     && <ErrorBoundary name="Minutas"><TabMinutasInline wd={wd} analysis={an} gddData={appGddData} blockTimes={blockTimes} onOpenMinuta={(key, data, editMode) => setMinutaLightbox({ key, data, editMode })} /></ErrorBoundary>}
         </div>
