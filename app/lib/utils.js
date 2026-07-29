@@ -129,7 +129,9 @@ export function splitOwners(personText, squadName) {
 function ownershipFor(personText, fallbackLabel, squadName) {
   const { mine, others, recognized } = splitOwners(personText, squadName);
   const belongs = recognized ? mine.length > 0 : normalizeSquad(fallbackLabel) === squadName;
-  return { belongs, owners: mine, otherOwners: others.length };
+  // `owners` = los de este squad; `allOwners` = todos los reconocidos, para poder
+  // mostrar "Varios owners" con la lista completa en el tooltip.
+  return { belongs, owners: mine, allOwners: [...mine, ...others] };
 }
 
 // getSquadWorkItems — trabajo activo de un squad: subtareas primero, luego tareas.
@@ -156,7 +158,7 @@ export function getSquadWorkItems(items, squadName) {
         // `person` es el texto crudo de Monday; `owners` son los de ESTE squad,
         // que es lo que debe verse en la fila.
         person: scv.person || null,
-        owners: own.owners, otherOwners: own.otherOwners,
+        owners: own.owners, allOwners: own.allOwners,
         parentName: it.name,
       });
     }
@@ -170,7 +172,7 @@ export function getSquadWorkItems(items, squadName) {
       id: `task-${it.id}`, name: it.name, kind: "task", phase,
       timeline: cv[WORK_COLS.task.timeline] || null,
       person: cv.person || null,
-      owners: own.owners, otherOwners: own.otherOwners,
+      owners: own.owners, allOwners: own.allOwners,
       subsTotal: allSubs.length,
       subsDone: allSubs.filter((s) => s.column_values?.[WORK_COLS.sub.phase] === "✅ Done").length,
     });

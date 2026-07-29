@@ -97,25 +97,25 @@ describe('getSquadWorkItems', () => {
 
     const revops = getSquadWorkItems(items, 'RevOps & Analytics')[0]
     expect(revops.owners).toEqual(['César Mejía'])
-    expect(revops.otherOwners).toBe(1)
+    expect(revops.allOwners).toEqual(['César Mejía', 'Iris Múgica'])
 
     const web = getSquadWorkItems(items, 'Web y contenidos')[0]
     expect(web.owners).toEqual(['Iris Múgica'])
-    expect(web.otherOwners).toBe(1)
+    expect(web.allOwners).toEqual(['Iris Múgica', 'César Mejía'])
   })
 
   it('con un solo responsable no reporta otros', () => {
     const items = [task('1', 'Propio', '🚧 Sprint', { person: 'César Mejía' })]
     const w = getSquadWorkItems(items, 'RevOps & Analytics')[0]
     expect(w.owners).toEqual(['César Mejía'])
-    expect(w.otherOwners).toBe(0)
+    expect(w.allOwners).toEqual(['César Mejía'])
   })
 
   it('los nombres desconocidos no cuentan como otros responsables', () => {
     const items = [task('1', 'Mixto', '🚧 Sprint', { person: 'César Mejía, Alguien Externo' })]
     const w = getSquadWorkItems(items, 'RevOps & Analytics')[0]
     expect(w.owners).toEqual(['César Mejía'])
-    expect(w.otherOwners).toBe(0)
+    expect(w.allOwners).toEqual(['César Mejía'])
   })
 
   it('tolera variantes de escritura del nombre en Monday', () => {
